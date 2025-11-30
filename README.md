@@ -1,16 +1,131 @@
-<<<<<<< HEAD
-# React + TypeScript + Vite
+# HomeLife - Pantry Management Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React + TypeScript application for managing household pantry items, recipes, shopping lists, meal plans, and budget tracking.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 18** with TypeScript
+- **Vite** for build tooling and HMR
+- **React Router** for navigation
+- **React Query** for data fetching and caching
+- **CSS Modules** for styling
 
-## React Compiler
+## Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```
+src/
+├── components/          # Reusable UI components
+│   ├── Modal.tsx       # Base modal component
+│   ├── ConfirmModal.tsx # Confirmation dialog (uses Modal)
+│   ├── DashboardNav.tsx # Navigation component
+│   └── ProtectedRoute.tsx # Route protection
+├── context/            # React Context providers
+│   ├── AuthContext.tsx # Authentication state
+│   └── AppContext.tsx  # Application state
+├── hooks/              # Custom React hooks
+│   ├── usePantry.ts
+│   ├── useRecipes.ts
+│   ├── useShoppingLists.ts
+│   ├── useExpenses.ts
+│   └── useMealPlans.ts
+├── pages/              # Page components
+│   ├── HomePage.tsx
+│   ├── PantryPage.tsx
+│   ├── RecipesPage.tsx
+│   ├── ShoppingListPage.tsx
+│   ├── WeeklyPlanPage.tsx
+│   ├── BudgetPage.tsx
+│   └── ProfilePage.tsx
+├── services/           # API service layer
+│   ├── apiCall.ts      # Base API utilities
+│   ├── auth.service.ts
+│   ├── pantry.service.ts
+│   ├── recipes.service.ts
+│   └── ...
+├── utils/              # Utility functions
+│   ├── dateUtils.ts    # Date formatting and calculations
+│   └── ingredientCheck.ts # Recipe ingredient availability checking
+└── types/              # TypeScript type definitions
+```
+
+## Key Utility Files
+
+### `dateUtils.ts`
+Essential date manipulation utilities used throughout the application:
+- `getWeekStartDate()` - Calculates the start of the week (Monday)
+- `getDaysUntilExpiry()` - Calculates days until expiration
+- `formatDate()` - Formats dates for display
+- Used in: HomePage, PantryPage, ShoppingListPage, WeeklyPlanPage
+
+### `ingredientCheck.ts`
+Recipe ingredient availability checking:
+- `checkIngredientAvailability()` - Checks if pantry has enough ingredients for a recipe
+- `convertToShoppingListItems()` - Converts missing ingredients to shopping list items
+- Used in: ShoppingListPage
+
+## Components
+
+### Modal Components
+- **Modal** - Base modal component with overlay, header, and body
+- **ConfirmModal** - Specialized confirmation dialog that wraps Modal component
+  - Used for delete confirmations and other critical actions
+  - Provides cancel/confirm button styling
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+```bash
+npm install
+```
+
+### Development
+
+```bash
+npm run dev
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Preview Production Build
+
+```bash
+npm run preview
+```
+
+## Environment Setup
+
+See `API_CONFIGURATION_GUIDE.md` for backend API configuration and environment variables.
+
+## Features
+
+- 🏠 **Pantry Management** - Track ingredients with expiry dates and locations
+- 📝 **Recipe Management** - Create and manage recipes with nutritional information
+- 🛒 **Shopping Lists** - Generate shopping lists from recipes
+- 📅 **Meal Planning** - Weekly meal planning and scheduling
+- 💰 **Budget Tracking** - Track expenses by category and store
+- 🔐 **Authentication** - User authentication and household management
+
+## API Integration
+
+The application integrates with a Laravel backend API. See the following guides:
+- `API_CONFIGURATION_GUIDE.md` - API setup and configuration
+- `API_INTEGRATION_GUIDE.md` - Integration details
+- `BACKEND_INTEGRATION.md` - Backend connection setup
+
+## Code Quality
+
+- ESLint for code linting
+- TypeScript for type safety
+- React Query for efficient data fetching
 
 ## Expanding the ESLint configuration
 
@@ -23,55 +138,18 @@ export default defineConfig([
     files: ['**/*.{ts,tsx}'],
     extends: [
       // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
       tseslint.configs.recommendedTypeChecked,
       // Alternatively, use this for stricter rules
       tseslint.configs.strictTypeChecked,
       // Optionally, add this for stylistic rules
       tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
     ],
     languageOptions: {
       parserOptions: {
         project: ['./tsconfig.node.json', './tsconfig.app.json'],
         tsconfigRootDir: import.meta.dirname,
       },
-      // other options...
     },
   },
 ])
 ```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-=======
-# Client-Side-HomeLife
->>>>>>> 717d2fd5a9ed73d9973b605609d3dfc08830b1fa
