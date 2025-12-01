@@ -1,9 +1,11 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAdmin } from '../hooks/useAdmin';
 import './DashboardNav.css';
 
 const DashboardNav = () => {
   const { logout } = useAuth();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,6 +51,11 @@ const DashboardNav = () => {
         <Link to="/budget" className={`nav-item ${getActiveClass('/budget')}`}>
           Budget
         </Link>
+        {isAdmin && (
+          <Link to="/admin" className={`nav-item ${getActiveClass('/admin')}`}>
+            ⚙️ Admin
+          </Link>
+        )}
         <button className="nav-item logout" onClick={handleLogout}>
           Logout
         </button>

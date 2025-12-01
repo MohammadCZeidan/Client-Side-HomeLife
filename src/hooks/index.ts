@@ -4,5 +4,6 @@ export * from './useRecipes';
 export * from './useShoppingLists';
 export * from './useExpenses';
 export * from './useMealPlans';
+export * from './useAdmin';
 export * from './queryKeys';
 

@@ -1,125 +1,185 @@
 import type { User } from '../types';
 import { apiCall, API_BASE_URL } from './apiCall';
+import axios, { AxiosError } from 'axios';
 
 export const authAPI = {
   login: async (email: string, password: string): Promise<{ user: User; token: string }> => {
-    // Make login request without Authorization header (public endpoint)
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      // Don't include token for login
-    };
+    try {
+      // Make login request without Authorization header (public endpoint)
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+        email,
+        password,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      // Handle Laravel validation errors
-      const errorMessage = errorData.message || 
-                          (errorData.errors && Object.values(errorData.errors).flat().join(', ')) ||
-                          `Login failed: ${response.statusText}`;
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
+      const data = response.data;
     
-    // Handle different Laravel JWT response formats:
-    // Format 1: { status: "success", payload: { token: "...", user: {...} } }
-    // Format 2: { access_token: "...", token_type: "bearer", user: {...} }
-    // Format 3: { token: "...", user: {...} }
-    // Format 4: { data: { token: "...", user: {...} } }
-    let token: string;
-    let user: User;
+      // Handle different Laravel JWT response formats:
+      // Format 1: { status: "success", payload: { token: "...", user: {...} } }
+      // Format 2: { access_token: "...", token_type: "bearer", user: {...} }
+      // Format 3: { token: "...", user: {...} }
+      // Format 4: { data: { token: "...", user: {...} } }
+      let token: string;
+      let userData: any;
 
-    // Check for payload wrapper first
-    if (data.payload) {
-      token = data.payload.token || data.payload.access_token;
-      user = data.payload.user || data.payload;
-    } else if (data.access_token) {
-      // Laravel Sanctum/Passport format
-      token = data.access_token;
-      user = data.user || data.data?.user;
-    } else if (data.token) {
-      // Direct token format
-      token = data.token;
-      user = data.user || data.data?.user;
-    } else if (data.data) {
-      // Nested data format
-      token = data.data.token || data.data.access_token;
-      user = data.data.user;
-    } else {
-      throw new Error('Invalid response format from login endpoint');
+      // Check for payload wrapper first
+      if (data.payload) {
+        token = data.payload.token || data.payload.access_token;
+        userData = data.payload.user || data.payload;
+      } else if (data.access_token) {
+        // Laravel Sanctum/Passport format
+        token = data.access_token;
+        userData = data.user || data.data?.user;
+      } else if (data.token) {
+        // Direct token format
+        token = data.token;
+        userData = data.user || data.data?.user;
+      } else if (data.data) {
+        // Nested data format
+        token = data.data.token || data.data.access_token;
+        userData = data.data.user;
+      } else {
+        throw new Error('Invalid response format from login endpoint');
+      }
+
+      if (!token || !userData) {
+        throw new Error('Token or user data missing from login response');
+      }
+
+      // Extract role from nested structure: role: { id: 1, role: "admin" } or role: "admin"
+      let roleValue: 'admin' | 'member' = 'member';
+      if (userData.role) {
+        if (typeof userData.role === 'string') {
+          roleValue = (userData.role === 'admin' || userData.role === 'member' ? userData.role : 'member') as 'admin' | 'member';
+        } else if (typeof userData.role === 'object' && 'role' in userData.role) {
+          roleValue = (userData.role.role === 'admin' || userData.role.role === 'member' ? userData.role.role : 'member') as 'admin' | 'member';
+        }
+      }
+
+      // Transform user data to User type
+      const user: User = {
+        id: String(userData.id),
+        email: userData.email,
+        name: userData.name,
+        role: roleValue,
+        householdId: userData.household_id ? String(userData.household_id) : null,
+      };
+
+      console.log('Login - Extracted user:', user);
+      console.log('Login - Role extracted:', roleValue, 'from:', userData.role);
+
+      // Store token
+      localStorage.setItem('auth_token', token);
+      
+      return { user, token };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<{
+          message?: string;
+          errors?: Record<string, string[]>;
+        }>;
+        
+        // Handle Laravel validation errors
+        const errorMessage = axiosError.response?.data?.message || 
+                            (axiosError.response?.data?.errors && 
+                             Object.values(axiosError.response.data.errors).flat().join(', ')) ||
+                            `Login failed: ${axiosError.message}`;
+        throw new Error(errorMessage);
+      }
+      throw error;
     }
-
-    if (!token || !user) {
-      throw new Error('Token or user data missing from login response');
-    }
-
-    // Store token
-    localStorage.setItem('auth_token', token);
-    
-    return { user, token };
   },
 
   register: async (email: string, password: string, name: string): Promise<{ user: User; token: string }> => {
-    // Make register request without Authorization header (public endpoint)
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
+    try {
+      // Make register request without Authorization header (public endpoint)
+      // Note: Backend should set new users as 'member' role by default (not admin)
+      // Frontend does NOT send role - backend handles default role assignment
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
+        email,
+        password,
+        name,
+        // Explicitly do NOT send role - backend should default to 'member'
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ email, password, name }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: response.statusText }));
-      // Handle Laravel validation errors
-      const errorMessage = errorData.message || 
-                          (errorData.errors && Object.values(errorData.errors).flat().join(', ')) ||
-                          `Registration failed: ${response.statusText}`;
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
+      const data = response.data;
     
-    // Handle different Laravel JWT response formats:
-    // Format 1: { status: "success", payload: { token: "...", user: {...} } }
-    // Format 2: { access_token: "...", token_type: "bearer", user: {...} }
-    // Format 3: { token: "...", user: {...} }
-    // Format 4: { data: { token: "...", user: {...} } }
-    let token: string;
-    let user: User;
+      // Handle different Laravel JWT response formats:
+      // Format 1: { status: "success", payload: { token: "...", user: {...} } }
+      // Format 2: { access_token: "...", token_type: "bearer", user: {...} }
+      // Format 3: { token: "...", user: {...} }
+      // Format 4: { data: { token: "...", user: {...} } }
+      let token: string;
+      let userData: any;
 
-    // Check for payload wrapper first
-    if (data.payload) {
-      token = data.payload.token || data.payload.access_token;
-      user = data.payload.user || data.payload;
-    } else if (data.access_token) {
-      token = data.access_token;
-      user = data.user || data.data?.user;
-    } else if (data.token) {
-      token = data.token;
-      user = data.user || data.data?.user;
-    } else if (data.data) {
-      token = data.data.token || data.data.access_token;
-      user = data.data.user;
-    } else {
-      throw new Error('Invalid response format from register endpoint');
+      // Check for payload wrapper first
+      if (data.payload) {
+        token = data.payload.token || data.payload.access_token;
+        userData = data.payload.user || data.payload;
+      } else if (data.access_token) {
+        token = data.access_token;
+        userData = data.user || data.data?.user;
+      } else if (data.token) {
+        token = data.token;
+        userData = data.user || data.data?.user;
+      } else if (data.data) {
+        token = data.data.token || data.data.access_token;
+        userData = data.data.user;
+      } else {
+        throw new Error('Invalid response format from register endpoint');
+      }
+
+      if (!token || !userData) {
+        throw new Error('Token or user data missing from register response');
+      }
+
+      // Extract role from nested structure: role: { id: 1, role: "admin" } or role: "admin"
+      // All new registrations should be 'member' by default (not admin)
+      let roleValue: 'admin' | 'member' = 'member';
+      if (userData.role) {
+        if (typeof userData.role === 'string') {
+          roleValue = (userData.role === 'admin' || userData.role === 'member' ? userData.role : 'member') as 'admin' | 'member';
+        } else if (typeof userData.role === 'object' && 'role' in userData.role) {
+          roleValue = (userData.role.role === 'admin' || userData.role.role === 'member' ? userData.role.role : 'member') as 'admin' | 'member';
+        }
+      }
+
+      // Ensure user role defaults to 'member' if not provided or invalid
+      const user: User = {
+        id: String(userData.id),
+        email: userData.email,
+        name: userData.name,
+        role: roleValue,
+        householdId: userData.household_id ? String(userData.household_id) : null,
+      };
+
+      // Store token
+      localStorage.setItem('auth_token', token);
+      
+      return { user, token };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<{
+          message?: string;
+          errors?: Record<string, string[]>;
+        }>;
+        
+        // Handle Laravel validation errors
+        const errorMessage = axiosError.response?.data?.message || 
+                            (axiosError.response?.data?.errors && 
+                             Object.values(axiosError.response.data.errors).flat().join(', ')) ||
+                            `Registration failed: ${axiosError.message}`;
+        throw new Error(errorMessage);
+      }
+      throw error;
     }
-
-    if (!token || !user) {
-      throw new Error('Token or user data missing from register response');
-    }
-
-    // Store token
-    localStorage.setItem('auth_token', token);
-    
-    return { user, token };
   },
 
   logout: async (): Promise<void> => {
@@ -134,57 +194,76 @@ export const authAPI = {
       id: number | string;
       email: string;
       name: string;
-      role?: string;
+      role?: string | {
+        id: number | string;
+        role: string;
+      };
       household_id?: number | string | null;
     }>('/auth/me');
     
-    // Transform backend response to frontend format
-    return {
+    console.log('getMe - Raw API response:', JSON.stringify(response, null, 2));
+    console.log('getMe - Response role value:', response.role);
+    console.log('getMe - Response role type:', typeof response.role);
+    
+    // Extract role from nested structure: role: { id: 1, role: "admin" } or role: "admin"
+    let roleValue: 'admin' | 'member' = 'member';
+    if (response.role) {
+      if (typeof response.role === 'string') {
+        roleValue = (response.role === 'admin' || response.role === 'member' ? response.role : 'member') as 'admin' | 'member';
+      } else if (typeof response.role === 'object' && 'role' in response.role) {
+        roleValue = (response.role.role === 'admin' || response.role.role === 'member' ? response.role.role : 'member') as 'admin' | 'member';
+      }
+    }
+    
+    console.log('getMe - Role extracted:', roleValue, 'from:', response.role);
+    
+    const user: User = {
       id: String(response.id),
       email: response.email,
       name: response.name,
-      role: (response.role === 'admin' || response.role === 'member' ? response.role : 'member') as 'admin' | 'member',
+      role: roleValue,
       householdId: response.household_id ? String(response.household_id) : null,
     };
+    
+    console.log('getMe - Final user object:', user);
+    
+    return user;
   },
 
   refreshToken: async (): Promise<{ token: string }> => {
-    // Refresh endpoint might return payload wrapper, so we handle it manually
-    const token = localStorage.getItem('auth_token');
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
+    try {
+      // Refresh endpoint might return payload wrapper, so we handle it manually
+      const token = localStorage.getItem('auth_token');
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers,
-    });
-
-    if (!response.ok) {
+      const data = response.data;
+    
+      // Handle different token response formats
+      let newToken: string;
+      if (data.payload) {
+        newToken = data.payload.token || data.payload.access_token;
+      } else if (data.access_token) {
+        newToken = data.access_token;
+      } else if (data.token) {
+        newToken = data.token;
+      } else if (data.data?.token) {
+        newToken = data.data.token;
+      } else {
+        throw new Error('Token missing from refresh response');
+      }
+    
+      // Update stored token
+      localStorage.setItem('auth_token', newToken);
+      
+      return { token: newToken };
+    } catch (error) {
       throw new Error('Token refresh failed');
     }
-
-    const data = await response.json();
-    
-    // Handle different token response formats
-    let newToken: string;
-    if (data.payload) {
-      newToken = data.payload.token || data.payload.access_token;
-    } else if (data.access_token) {
-      newToken = data.access_token;
-    } else if (data.token) {
-      newToken = data.token;
-    } else if (data.data?.token) {
-      newToken = data.data.token;
-    } else {
-      throw new Error('Token missing from refresh response');
-    }
-    
-    // Update stored token
-    localStorage.setItem('auth_token', newToken);
-    
-    return { token: newToken };
   },
 
   updateProfile: async (_userId: string, updates: { email?: string; name?: string }): Promise<User> => {

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import { useAdmin } from '../hooks/useAdmin';
 import { aiAPI } from '../services';
 import './SeedButton.css';
 
 const SeedButton = () => {
   const { household, user } = useAuth();
+  const { isAdmin } = useAdmin();
   const { refreshPantry, refreshRecipes, refreshShoppingLists, refreshExpenses } = useApp();
   const [isSeeding, setIsSeeding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -48,8 +50,8 @@ const SeedButton = () => {
     }
   };
 
-  // Only show in development and when user is logged in
-  if (import.meta.env.PROD || !user) {
+  // Only show in development, when user is logged in, AND user is admin
+  if (import.meta.env.PROD || !user || !isAdmin) {
     return null;
   }
 
@@ -59,7 +61,7 @@ const SeedButton = () => {
         className="seed-button"
         onClick={handleSeed}
         disabled={isSeeding}
-        title="Load sample data for testing"
+        title="Load sample data for testing (Admin Only)"
       >
         {isSeeding ? 'Generating with AI...' : '🤖 Generate AI Data'}
       </button>

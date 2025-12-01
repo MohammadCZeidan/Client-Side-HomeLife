@@ -1,0 +1,214 @@
+{
+  "name": "WF3: Shopping List Auto-Update",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meal-plan-updated",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: Meal Plan Updated",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "meal-plan-updated"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"received\", \"planId\": $json.body.planId || $json.query.planId } }}",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract plan ID from webhook payload\nconst body = $json.body || $json.query || $json;\nconst planId = body.planId || body.meal_plan_id || body.id;\nconst weekId = body.weekId || body.week_id || planId;\n\nif (!planId && !weekId) {\n  throw new Error('Missing planId or weekId in webhook payload');\n}\n\nreturn {\n  json: {\n    planId: planId || weekId,\n    weekId: weekId || planId,\n    title: body.title || 'Weekly Shopping List',\n    householdId: body.householdId || body.household_id\n  }\n};"
+      },
+      "id": "extract-plan-id",
+      "name": "Extract Plan ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "httpHeaderAuth": {
+          "name": "Authorization",
+          "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+        },
+        "url": "={{ $env.API_BASE_URL || 'http://127.0.0.1:8000/api/v0.1' }}/shopping-lists/generate",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "week_id",
+              "value": "={{ $json.weekId }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-shopping-list",
+      "name": "Generate Shopping List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format notification message\nconst shoppingList = $json;\nconst items = shoppingList.items || shoppingList.payload?.items || [];\nconst listId = shoppingList.id || shoppingList.payload?.id;\nconst listName = shoppingList.name || shoppingList.title || shoppingList.payload?.name || 'Shopping List';\n\nlet message = `🛒 Shopping List Updated\\n\\n`;\nmessage += `List: ${listName}\\n`;\nmessage += `Total Items: ${items.length}\\n\\n`;\n\nif (items.length > 0) {\n  message += `Items:\\n`;\n  items.slice(0, 10).forEach((item, index) => {\n    const name = item.name || item.ingredient || 'Item';\n    const quantity = item.quantity || 0;\n    const unit = item.unit || '';\n    const bought = item.bought ? '✅' : '⬜';\n    message += `${bought} ${name} - ${quantity} ${unit}\\n`;\n  });\n  \n  if (items.length > 10) {\n    message += `\\n... and ${items.length - 10} more items`;\n  }\n} else {\n  message += `No items needed! 🎉`;\n}\n\nreturn {\n  json: {\n    message: message,\n    listId: listId,\n    listName: listName,\n    itemCount: items.length,\n    shoppingList: shoppingList\n  }\n};"
+      },
+      "id": "format-notification",
+      "name": "Format Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.EMAIL_FROM || 'noreply@homelife.app' }}",
+        "toEmail": "={{ $env.EMAIL_TO }}",
+        "subject": "Shopping List Updated - HomeLife",
+        "emailType": "html",
+        "message": "={{ $json.message.replace(/\\n/g, '<br>') }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1250, 200],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-credentials",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "send-telegram",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1250, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "={{ $env.SLACK_CHANNEL || '#notifications' }}",
+        "text": "={{ $json.message }}",
+        "otherOptions": {
+          "username": "HomeLife Bot"
+        }
+      },
+      "id": "send-slack",
+      "name": "Send Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1250, 400],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: Meal Plan Updated": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract Plan ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Plan ID": {
+      "main": [
+        [
+          {
+            "node": "Generate Shopping List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Shopping List": {
+      "main": [
+        [
+          {
+            "node": "Format Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
+

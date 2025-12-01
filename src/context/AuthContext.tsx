@@ -29,6 +29,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       authAPI
         .getMe()
         .then((user) => {
+          console.log('AuthContext - getMe - User received:', user);
+          console.log('AuthContext - getMe - User role:', user.role);
           setUser(user);
           localStorage.setItem('user', JSON.stringify(user));
           loadHousehold();
@@ -58,6 +60,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     const { user: loggedInUser } = await authAPI.login(email, password);
+    console.log('AuthContext - Login - User received:', loggedInUser);
+    console.log('AuthContext - Login - User role:', loggedInUser.role);
     setUser(loggedInUser);
     localStorage.setItem('user', JSON.stringify(loggedInUser));
     await loadHousehold();
