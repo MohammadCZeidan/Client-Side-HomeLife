@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
+import { useAdmin } from '../hooks/useAdmin';
 import { householdAPI } from '../services';
 import type { Household } from '../types';
 import './ProfilePage.css';
 
 const ProfilePage = () => {
   const { user, household, updateProfile } = useAuth();
+  const { isAdmin } = useAdmin();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -150,7 +152,23 @@ const ProfilePage = () => {
               </div>
               <div className="info-row">
                 <div className="info-label">Name</div>
-                <div className="info-value">{user?.name || 'Not set'}</div>
+                <div className="info-value">
+                  {user?.name || 'Not set'}
+                  {user?.role === 'admin' && (
+                    <span className="role-badge admin" style={{ 
+                      display: 'inline-block',
+                      padding: '4px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      background: 'var(--primary)',
+                      color: 'var(--white)',
+                      marginLeft: '8px'
+                    }}>
+                      Admin
+                    </span>
+                  )}
+                </div>
               </div>
               <button className="edit-profile-btn" onClick={handleEditProfile}>
                 Edit Profile

@@ -9,7 +9,9 @@ import WeeklyPlanPage from './pages/WeeklyPlanPage';
 import ProfilePage from './pages/ProfilePage';
 import RecipesPage from './pages/RecipesPage';
 import BudgetPage from './pages/BudgetPage';
+import AdminPage from './pages/AdminPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import SeedButton from './components/SeedButton';
 import './App.css';
 
@@ -75,6 +77,14 @@ function App() {
             <ProtectedRoute>
               <BudgetPage />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPage />
+            </AdminRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

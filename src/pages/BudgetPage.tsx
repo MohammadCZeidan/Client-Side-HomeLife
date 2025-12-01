@@ -4,6 +4,7 @@ import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks';
+import { aiAPI, n8nAPI } from '../services';
 import type { Expense } from '../types';
 import './BudgetPage.css';
 
@@ -38,6 +39,85 @@ const BudgetPage = () => {
     note: '',
     store: '',
   });
+
+  // AI and n8n button states
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
+  const [isN8nSending, setIsN8nSending] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [senderEmail, setSenderEmail] = useState(user?.email || '');
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [selectedChannels, setSelectedChannels] = useState<('email' | 'telegram' | 'slack')[]>(['email']);
+
+  const handleAIGenerate = async () => {
+    if (!householdId) {
+      alert('Please create or join a household first');
+      return;
+    }
+
+    if (!confirm('This will generate AI-powered sample data (ingredients with nutrition, recipes, pantry items). Continue?')) {
+      return;
+    }
+
+    setIsAIGenerating(true);
+    try {
+      const result = await aiAPI.generateSeedData();
+      alert(`✅ Success! Created: ${result.created.ingredients} ingredients, ${result.created.recipes} recipes, ${result.created.pantry_items} pantry items`);
+    } catch (error) {
+      console.error('Failed to generate AI data:', error);
+      alert('Failed to generate seed data. Please check your OpenAI API key in the backend .env file.');
+    } finally {
+      setIsAIGenerating(false);
+    }
+  };
+
+  const handleN8nNotification = () => {
+    if (!householdId) {
+      alert('Please create or join a household first');
+      return;
+    }
+    setNotificationMessage('');
+    setSenderEmail(user?.email || '');
+    setSelectedChannels(['email']);
+    setShowNotificationModal(true);
+  };
+
+  const handleSendNotification = async () => {
+    if (!householdId) return;
+
+    if (!notificationMessage.trim()) {
+      alert('Please enter a message');
+      return;
+    }
+
+    if (selectedChannels.length === 0) {
+      alert('Please select at least one notification channel');
+      return;
+    }
+
+    if (!senderEmail.trim() || !senderEmail.includes('@')) {
+      alert('Please enter a valid sender email address');
+      return;
+    }
+
+    setIsN8nSending(true);
+    try {
+      const result = await n8nAPI.sendNotification(householdId, {
+        channels: selectedChannels,
+        message: notificationMessage,
+        subject: 'HomeLife Notification',
+        senderEmail: senderEmail.trim(),
+      });
+      
+      alert(`✅ ${result.message || 'Notification sent successfully!'}`);
+      setShowNotificationModal(false);
+      setNotificationMessage('');
+    } catch (error) {
+      console.error('Failed to send notification:', error);
+      alert(`Failed to send notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsN8nSending(false);
+    }
+  };
 
   // Calculate stats dynamically from expenses
   const stats = useMemo(() => {
@@ -295,10 +375,30 @@ const BudgetPage = () => {
     <div className="budget-page">
       <DashboardNav />
       <div className="budget-content">
-        <h1 className="page-title">Budget & Expenses</h1>
-        <button className="add-expense-btn" onClick={handleAddExpense}>
-          +Add Expense
-        </button>
+        <div className="budget-header">
+          <h1 className="page-title">Budget & Expenses</h1>
+          <div className="budget-action-buttons">
+            <button className="add-expense-btn" onClick={handleAddExpense}>
+              +Add Expense
+            </button>
+            <button 
+              className="ai-button" 
+              onClick={handleAIGenerate}
+              disabled={isAIGenerating}
+              title="Generate AI-powered sample data"
+            >
+              {isAIGenerating ? '🤖 Generating...' : '🤖 AI Generate'}
+            </button>
+            <button 
+              className="n8n-button" 
+              onClick={handleN8nNotification}
+              disabled={isN8nSending}
+              title="Send notification via email/telegram/slack"
+            >
+              {isN8nSending ? '📧 Sending...' : '📧 Send Notification'}
+            </button>
+          </div>
+        </div>
 
         <div className="stats-cards">
           <div className="stat-card">
@@ -520,6 +620,106 @@ const BudgetPage = () => {
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      {/* Notification Modal */}
+      <Modal
+        isOpen={showNotificationModal}
+        onClose={() => {
+          setShowNotificationModal(false);
+          setNotificationMessage('');
+        }}
+        title="Send Notification"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendNotification();
+          }}
+          className="expense-form"
+        >
+          <div className="form-group">
+            <label>Sender Email</label>
+            <input
+              type="email"
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+              placeholder="your-email@example.com"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Notification Channels</label>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedChannels.includes('email')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedChannels([...selectedChannels, 'email']);
+                    } else {
+                      setSelectedChannels(selectedChannels.filter((c) => c !== 'email'));
+                    }
+                  }}
+                />
+                <span>📧 Email</span>
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedChannels.includes('telegram')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedChannels([...selectedChannels, 'telegram']);
+                    } else {
+                      setSelectedChannels(selectedChannels.filter((c) => c !== 'telegram'));
+                    }
+                  }}
+                />
+                <span>💬 Telegram</span>
+              </label>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedChannels.includes('slack')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedChannels([...selectedChannels, 'slack']);
+                    } else {
+                      setSelectedChannels(selectedChannels.filter((c) => c !== 'slack'));
+                    }
+                  }}
+                />
+                <span>💼 Slack</span>
+              </label>
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Message</label>
+            <textarea
+              value={notificationMessage}
+              onChange={(e) => setNotificationMessage(e.target.value)}
+              placeholder="Enter your notification message..."
+              rows={5}
+              required
+            />
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              onClick={() => {
+                setShowNotificationModal(false);
+                setNotificationMessage('');
+              }}
+            >
+              Cancel
+            </button>
+            <button type="submit" disabled={isN8nSending || selectedChannels.length === 0}>
+              {isN8nSending ? 'Sending...' : 'Send Notification'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
