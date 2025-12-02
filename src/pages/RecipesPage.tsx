@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
+import AlertModal from '../components/AlertModal';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { recipeAPI, pantryAPI, aiAPI } from '../services';
@@ -39,6 +41,16 @@ const RecipesPage = () => {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [substitutions, setSubstitutions] = useState<Array<{ missing_ingredient: string; substitution: string }>>([]);
   const [isLoadingSubstitutions, setIsLoadingSubstitutions] = useState(false);
+  const [deleteRecipeConfirm, setDeleteRecipeConfirm] = useState<{ isOpen: boolean; recipe: Recipe | null }>({
+    isOpen: false,
+    recipe: null,
+  });
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error',
+  });
 
   const householdId = household?.id || user?.householdId || '';
 
@@ -97,7 +109,12 @@ const RecipesPage = () => {
 
   const handleGetAISuggestions = async () => {
     if (!householdId) {
-      alert('Please create or join a household first');
+      setAlertModal({
+        isOpen: true,
+        title: 'Household Required',
+        message: 'Please create or join a household first',
+        type: 'warning',
+      });
       return;
     }
     
@@ -107,7 +124,12 @@ const RecipesPage = () => {
       setAiSuggestions(result.suggestions || []);
     } catch (error) {
       console.error('Failed to get AI suggestions:', error);
-      alert('Failed to get AI suggestions. Please check your OpenAI API key in the backend.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to get AI suggestions. Please check your OpenAI API key in the backend.',
+        type: 'error',
+      });
     } finally {
       setIsLoadingSuggestions(false);
     }
@@ -207,15 +229,28 @@ const RecipesPage = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteRecipe = async (recipe: Recipe) => {
-    if (confirm(`Are you sure you want to delete "${recipe.title}"?`)) {
-      try {
-        await recipeAPI.delete(recipe.id, householdId);
-        await refreshRecipes();
-      } catch (error) {
-        console.error('Failed to delete recipe:', error);
-        console.error('Failed to delete recipe. Please try again.');
+  const handleDeleteRecipe = (recipe: Recipe) => {
+    setDeleteRecipeConfirm({ isOpen: true, recipe });
+  };
+
+  const handleConfirmDeleteRecipe = async () => {
+    if (!deleteRecipeConfirm.recipe || !householdId) return;
+    try {
+      await recipeAPI.delete(deleteRecipeConfirm.recipe.id, householdId);
+      await refreshRecipes();
+      setDeleteRecipeConfirm({ isOpen: false, recipe: null });
+      if (selectedRecipe?.id === deleteRecipeConfirm.recipe.id) {
+        setIsViewModalOpen(false);
+        setSelectedRecipe(null);
       }
+    } catch (error) {
+      console.error('Failed to delete recipe:', error);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to delete recipe. Please try again.',
+        type: 'error',
+      });
     }
   };
 
@@ -419,7 +454,12 @@ const RecipesPage = () => {
       const errorMessage = `Please enter valid ingredient amounts (greater than 0 and less than 1,000,000) for: ${invalidIngredients.map(ing => ing.ingredient || 'unnamed').join(', ')}`;
       console.error('Validation failed:', errorMessage);
       console.error('Invalid ingredients:', invalidIngredients);
-      alert(errorMessage);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: errorMessage,
+        type: 'error',
+      });
       return;
     }
 
@@ -932,6 +972,24 @@ const RecipesPage = () => {
           </div>
         )}
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteRecipeConfirm.isOpen}
+        onClose={() => setDeleteRecipeConfirm({ isOpen: false, recipe: null })}
+        onConfirm={handleConfirmDeleteRecipe}
+        title="Delete Recipe"
+        message={deleteRecipeConfirm.recipe ? `Are you sure you want to delete "${deleteRecipeConfirm.recipe.title}"?` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 };

@@ -1,9 +1,9 @@
 import axios, { type AxiosRequestConfig, AxiosError } from 'axios';
 
-// Shared API call utility
+// Base URL for API calls - defaults to localhost if env var isn't set
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v0.1';
 
-// Create axios instance with default config
+// Setting up axios with default headers
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,7 +11,7 @@ const axiosInstance = axios.create({
   },
 });
 
-// Add request interceptor to include auth token
+// Auto-add auth token to every request if it exists in localStorage
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
@@ -30,14 +30,14 @@ export async function apiCall<T>(
   options: AxiosRequestConfig & { body?: string } = {}
 ): Promise<T> {
   try {
-    // Convert fetch-style 'body' to axios 'data'
-    // If body is a string (JSON.stringify result), parse it; otherwise use as-is
+    // Had to support both 'body' (from old fetch code) and 'data' (axios style)
+    // If body is a JSON string, parse it first
     let requestData = options.data;
     if (options.body) {
       try {
         requestData = JSON.parse(options.body);
       } catch {
-        // If parsing fails, use body as-is (shouldn't happen with JSON.stringify)
+        // If parsing fails, just use it as-is (shouldn't happen but just in case)
         requestData = options.body;
       }
     }
@@ -52,15 +52,15 @@ export async function apiCall<T>(
       },
     });
 
-    // Handle non-JSON responses (like 204 No Content)
+    // Handle empty responses (like 204 No Content)
     if (response.status === 204) {
       return {} as T;
     }
 
     const data = response.data;
     
-    // Handle Laravel response wrapper: { status: "success", payload: {...} }
-    // If payload exists, return it; otherwise return the whole response
+    // Laravel wraps responses in { status: "success", payload: {...} }
+    // Extract payload if it exists, otherwise return the whole thing
     if (data && typeof data === 'object' && 'payload' in data) {
       return data.payload as T;
     }
@@ -73,12 +73,13 @@ export async function apiCall<T>(
         errors?: Record<string, string[]>;
       }>;
       
-      // Handle Laravel validation errors
+      // Try to get a useful error message
       let errorMessage = axiosError.response?.data?.message || 
                         axiosError.message || 
                         `API Error: ${axiosError.response?.statusText || 'Unknown error'}`;
       
-      // Extract validation errors if present
+      // Laravel validation errors come as an object with field names
+      // Flatten them into a single message
       if (axiosError.response?.data?.errors && typeof axiosError.response.data.errors === 'object') {
         const validationErrors = Object.values(axiosError.response.data.errors).flat();
         if (validationErrors.length > 0) {

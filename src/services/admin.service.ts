@@ -32,23 +32,21 @@ export interface AdminUserResponse {
 }
 
 export const adminAPI = {
-  // Get all users with their household information (admin only)
-  // Backend endpoint: GET /api/v0.1/users
-  // Backend should verify the logged-in user is an admin before returning data
-  // If user is not admin, backend should return 403 Forbidden
-  // Response format: { status: "success", payload: [{ id, name, email, role: {id, role}, household: {id, name} }] }
+  // Get all users - admin only
+  // Backend should check if user is admin and return 403 if not
+  // Expected response: { status: "success", payload: [{ id, name, email, role: {id, role}, household: {id, name} }] }
   getAllUsers: async (): Promise<AdminUser[]> => {
     try {
       const response = await apiCall<AdminUserResponse[]>('/users');
       console.log('Raw API response:', response);
       
-      // Check if response is an array
+      // Make sure we got an array
       if (!Array.isArray(response)) {
         console.error('Expected array but got:', response);
         throw new Error('Invalid response format: expected array of users');
       }
       
-      // Helper function to extract role string from nested or flat structure
+      // Helper to extract role string - handles both { id: 1, role: "admin" } and "admin"
       const extractRole = (role: string | { id: number | string; role: string } | undefined): 'admin' | 'member' => {
         if (!role) return 'member';
         if (typeof role === 'string') {
@@ -61,7 +59,7 @@ export const adminAPI = {
         return 'member';
       };
       
-      // Group users by household to get members
+      // Group users by household so we can show who shares with whom
       const householdMap = new Map<string, AdminUser[]>();
       
       const users = response.map((user) => {
@@ -77,7 +75,7 @@ export const adminAPI = {
           householdName: user.household?.name,
         };
         
-        // Group by household
+        // Add to household group
         if (adminUser.householdId) {
           if (!householdMap.has(adminUser.householdId)) {
             householdMap.set(adminUser.householdId, []);
@@ -88,11 +86,11 @@ export const adminAPI = {
         return adminUser;
       });
       
-      // Add household members to each user
+      // Add household members list to each user (excluding themselves)
       users.forEach((user) => {
         if (user.householdId) {
           const householdMembers = householdMap.get(user.householdId) || [];
-          // Exclude the current user from their own members list
+          // Don't show user in their own members list
           user.householdMembers = householdMembers.filter(m => m.id !== user.id);
         }
       });
@@ -105,18 +103,18 @@ export const adminAPI = {
     }
   },
 
-  // Get all households with their members (admin only)
-  // Since the /users endpoint already provides household info, we derive households from users
+  // Get all households with their members
+  // Since /users already gives us household info, just derive households from users
   getAllHouseholds: async (): Promise<Array<{
     id: string;
     name: string;
     members: AdminUser[];
     inviteCode?: string;
   }>> => {
-    // Get all users first to extract household information
+    // Get users first to extract household data
     const allUsers = await adminAPI.getAllUsers();
     
-    // Group users by household
+    // Group by household
     const householdMap = new Map<string, {
       id: string;
       name: string;

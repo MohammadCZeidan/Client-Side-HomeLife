@@ -16,6 +16,7 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
+  // Only admins can access admin pages
   if (user.role !== 'admin') {
     return <Navigate to="/home" replace />;
   }

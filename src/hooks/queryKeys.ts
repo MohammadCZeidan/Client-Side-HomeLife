@@ -1,68 +1,88 @@
-// Query keys for React Query
+// React Query cache keys - helps organize and invalidate queries
+// Each resource gets its own set of keys so we can cache and refresh data properly
+
+// Helper to create standard query key structure for each resource
+// Saves me from writing the same pattern over and over
+// Pattern: all, lists(), list(id), details(), detail(id)
+function createResourceKeys(resourceName: string) {
+  // Return an object with methods that build the key arrays
+  const base = {
+    // Root key for this resource: ['resourceName']
+    all: [resourceName] as const,
+    
+    lists: () => [resourceName, 'list'] as const,
+
+    list: (householdId: string) => [resourceName, 'list', householdId] as const,
+    
+
+    details: () => [resourceName, 'detail'] as const,
+
+    detail: (id: string) => [resourceName, 'detail', id] as const,
+  };
+  
+  return base;
+}
+
 export const queryKeys = {
-  // Pantry
+
   pantry: {
-    all: ['pantry'] as const,
-    lists: () => [...queryKeys.pantry.all, 'list'] as const,
-    list: (householdId: string) => [...queryKeys.pantry.lists(), householdId] as const,
-    details: () => [...queryKeys.pantry.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.pantry.details(), id] as const,
-    expiring: (householdId: string) => [...queryKeys.pantry.all, 'expiring', householdId] as const,
+
+    ...createResourceKeys('pantry'),
+
+    expiring: (householdId: string) => ['pantry', 'expiring', householdId] as const,
   },
   
-  // Recipes
+
   recipes: {
-    all: ['recipes'] as const,
-    lists: () => [...queryKeys.recipes.all, 'list'] as const,
-    list: (householdId: string) => [...queryKeys.recipes.lists(), householdId] as const,
-    details: () => [...queryKeys.recipes.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.recipes.details(), id] as const,
+
+    ...createResourceKeys('recipes'),
+    
+
     suggestions: (householdId: string, useAI: boolean, limit: number) => 
-      [...queryKeys.recipes.all, 'suggestions', householdId, useAI, limit] as const,
-    substitutions: (id: string) => [...queryKeys.recipes.all, 'substitutions', id] as const,
+      ['recipes', 'suggestions', householdId, useAI, limit] as const,
+
+    substitutions: (id: string) => ['recipes', 'substitutions', id] as const,
   },
-  
-  // Shopping Lists
+
   shoppingLists: {
-    all: ['shoppingLists'] as const,
-    lists: () => [...queryKeys.shoppingLists.all, 'list'] as const,
-    list: (householdId: string) => [...queryKeys.shoppingLists.lists(), householdId] as const,
-    details: () => [...queryKeys.shoppingLists.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.shoppingLists.details(), id] as const,
-    default: (householdId: string) => [...queryKeys.shoppingLists.all, 'default', householdId] as const,
+
+    ...createResourceKeys('shoppingLists'),
+    
+
+    default: (householdId: string) => ['shoppingLists', 'default', householdId] as const,
   },
-  
-  // Expenses
+
   expenses: {
-    all: ['expenses'] as const,
-    lists: () => [...queryKeys.expenses.all, 'list'] as const,
-    list: (householdId: string) => [...queryKeys.expenses.lists(), householdId] as const,
-    details: () => [...queryKeys.expenses.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.expenses.details(), id] as const,
-    summary: (householdId: string) => [...queryKeys.expenses.all, 'summary', householdId] as const,
+
+    ...createResourceKeys('expenses'),
+    
+
+    summary: (householdId: string) => ['expenses', 'summary', householdId] as const,
   },
-  
-  // Meal Plans
+
   mealPlans: {
+
     all: ['mealPlans'] as const,
+
     weekly: (householdId: string, weekStartDate: string) => 
       [...queryKeys.mealPlans.all, 'weekly', householdId, weekStartDate] as const,
   },
-  
-  // Ingredients
+
   ingredients: {
-    all: ['ingredients'] as const,
-    lists: () => [...queryKeys.ingredients.all, 'list'] as const,
+
+    ...createResourceKeys('ingredients'),
+    
+
     list: (householdId: string, search?: string) => 
-      [...queryKeys.ingredients.lists(), householdId, search] as const,
-    details: () => [...queryKeys.ingredients.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.ingredients.details(), id] as const,
+      ['ingredients', 'list', householdId, search] as const,
   },
-  
-  // Units
+
   units: {
+
     all: ['units'] as const,
+    
+ 
     list: () => [...queryKeys.units.all, 'list'] as const,
   },
-} as const;
+} as const; 
 

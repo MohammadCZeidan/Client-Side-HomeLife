@@ -22,10 +22,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session and verify token with backend
+    // Check if user is already logged in (has token in localStorage)
     const token = localStorage.getItem('auth_token');
     if (token) {
-      // Verify token by fetching current user from backend
+      // Verify token is still valid by fetching current user
       authAPI
         .getMe()
         .then((user) => {
@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           loadHousehold();
         })
         .catch((error) => {
-          // Token is invalid or expired, clear it
+          // Token expired or invalid - clear it
           console.error('Token verification failed:', error);
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user');

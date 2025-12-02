@@ -248,6 +248,9 @@
   gap: var(--spacing-lg);
   max-height: 70vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .recipe-form .form-group {
@@ -260,6 +263,14 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-md);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .recipe-form .form-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .recipe-form label {
@@ -280,6 +291,9 @@
   color: var(--text-primary);
   background: var(--white);
   transition: all var(--transition);
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .recipe-form input:focus,
@@ -338,6 +352,14 @@
   grid-template-columns: 2fr 1fr 1fr auto;
   gap: var(--spacing-sm);
   align-items: end;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .add-ingredient-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .add-ingredient-form input,
@@ -535,12 +557,12 @@
   .recipes-grid {
     grid-template-columns: 1fr;
   }
+}
 
-  .recipe-form .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .add-ingredient-form {
-    grid-template-columns: 1fr;
+@media (max-width: 1024px) {
+  .modal-content {
+    max-width: 95%;
+    width: 95%;
+    padding: var(--spacing-lg);
   }
 }

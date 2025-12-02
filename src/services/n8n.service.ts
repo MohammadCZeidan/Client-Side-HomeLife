@@ -8,8 +8,8 @@ export interface NotificationOptions {
 }
 
 export const n8nAPI = {
-  // Send notification to user via n8n (email/telegram/slack)
-  // This will trigger a notification workflow that sends to the user's configured channels
+  // Send notification via n8n workflow
+  // Triggers the notification workflow that sends to user's configured channels
   sendNotification: async (
     householdId: string,
     options: NotificationOptions = {}
@@ -31,14 +31,14 @@ export const n8nAPI = {
     });
   },
 
-  // Trigger daily expiry alerts workflow (WF1)
+  // Trigger the daily expiry alerts workflow (WF1)
   triggerExpiryAlerts: async (householdId: string): Promise<{ success: boolean; message: string }> => {
     return apiCall<{ success: boolean; message: string }>(`/n8n/households/${householdId}/trigger-expiry-alerts`, {
       method: 'POST',
     });
   },
 
-  // Trigger weekly meal plan draft workflow (WF2)
+  // Trigger the weekly meal plan draft workflow (WF2)
   triggerMealPlanDraft: async (householdId: string): Promise<{ success: boolean; message: string }> => {
     return apiCall<{ success: boolean; message: string }>(`/n8n/households/${householdId}/trigger-meal-plan-draft`, {
       method: 'POST',

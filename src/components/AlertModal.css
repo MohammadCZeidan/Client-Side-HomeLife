@@ -1,0 +1,54 @@
+.alert-modal {
+  padding: var(--spacing-md);
+}
+
+.alert-message {
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.alert-modal-success .alert-message {
+  color: var(--success, #348048);
+}
+
+.alert-modal-error .alert-message {
+  color: var(--danger);
+}
+
+.alert-modal-warning .alert-message {
+  color: var(--warning);
+}
+
+.alert-modal-info .alert-message {
+  color: var(--text-primary);
+}
+
+.alert-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+}
+
+.alert-btn-ok {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.alert-btn-ok:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.alert-btn-ok:active {
+  transform: translateY(0);
+}
+

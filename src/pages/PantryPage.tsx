@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { pantryAPI } from '../services';
@@ -102,12 +103,21 @@ const PantryPage = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; itemId: string | null }>({
+    isOpen: false,
+    itemId: null,
+  });
+
+  const handleDelete = (id: string) => {
     if (!householdId) {
       console.log('Missing household ID');
       return;
     }
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    setDeleteConfirm({ isOpen: true, itemId: id });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.itemId || !householdId) return;
     try {
       await pantryAPI.delete(id, householdId);
       await refreshPantry();
@@ -184,7 +194,10 @@ const PantryPage = () => {
       <DashboardNav />
       <div className="pantry-content">
         <div className="pantry-header">
-          <h1 className="page-title">Pantry</h1>
+          <div className="header-content">
+            <h1 className="page-title">Storage Management</h1>
+            <p className="page-subtitle">Track and manage your household inventory</p>
+          </div>
           <div className="pantry-actions">
             <label className="filter-toggle">
               <input
@@ -192,10 +205,10 @@ const PantryPage = () => {
                 checked={filterExpiring}
                 onChange={(e) => setFilterExpiring(e.target.checked)}
               />
-              Show expiring soon (7 days)
+              Expiring Soon (7 days)
             </label>
             <button className="add-items-btn" onClick={() => setIsAddModalOpen(true)}>
-              Add Items
+              Add Item
             </button>
           </div>
         </div>
@@ -459,6 +472,16 @@ const PantryPage = () => {
             </div>
           </form>
         </Modal>
+
+        <ConfirmModal
+          isOpen={deleteConfirm.isOpen}
+          onClose={() => setDeleteConfirm({ isOpen: false, itemId: null })}
+          onConfirm={handleConfirmDelete}
+          title="Delete Item"
+          message="Are you sure you want to delete this item?"
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
       </div>
     </div>
   );

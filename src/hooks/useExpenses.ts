@@ -8,7 +8,7 @@ export const useExpenses = (householdId: string) => {
   return useQuery({
     queryKey: queryKeys.expenses.list(householdId),
     queryFn: () => budgetAPI.getAll(householdId),
-    enabled: !!householdId,
+      
     staleTime: 30000, // 30 seconds
   });
 };

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
+import AlertModal from '../components/AlertModal';
 import { useAuth } from '../context/AuthContext';
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks';
 import { aiAPI, n8nAPI } from '../services';
@@ -47,24 +48,48 @@ const BudgetPage = () => {
   const [senderEmail, setSenderEmail] = useState(user?.email || '');
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [selectedChannels, setSelectedChannels] = useState<('email' | 'telegram' | 'slack')[]>(['email']);
+  
+  // Alert and confirm modals
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+  const [confirmAIGenerate, setConfirmAIGenerate] = useState(false);
 
-  const handleAIGenerate = async () => {
+  const handleAIGenerate = () => {
     if (!householdId) {
-      alert('Please create or join a household first');
+      setAlertModal({
+        isOpen: true,
+        title: 'Household Required',
+        message: 'Please create or join a household first',
+        type: 'warning',
+      });
       return;
     }
+    setConfirmAIGenerate(true);
+  };
 
-    if (!confirm('This will generate AI-powered sample data (ingredients with nutrition, recipes, pantry items). Continue?')) {
-      return;
-    }
-
+  const handleConfirmAIGenerate = async () => {
+    setConfirmAIGenerate(false);
     setIsAIGenerating(true);
     try {
       const result = await aiAPI.generateSeedData();
-      alert(`✅ Success! Created: ${result.created.ingredients} ingredients, ${result.created.recipes} recipes, ${result.created.pantry_items} pantry items`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Success!',
+        message: `✅ Created: ${result.created.ingredients} ingredients, ${result.created.recipes} recipes, ${result.created.pantry_items} pantry items`,
+        type: 'success',
+      });
     } catch (error) {
       console.error('Failed to generate AI data:', error);
-      alert('Failed to generate seed data. Please check your OpenAI API key in the backend .env file.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to generate seed data. Please check your OpenAI API key in the backend .env file.',
+        type: 'error',
+      });
     } finally {
       setIsAIGenerating(false);
     }
@@ -72,7 +97,12 @@ const BudgetPage = () => {
 
   const handleN8nNotification = () => {
     if (!householdId) {
-      alert('Please create or join a household first');
+      setAlertModal({
+        isOpen: true,
+        title: 'Household Required',
+        message: 'Please create or join a household first',
+        type: 'warning',
+      });
       return;
     }
     setNotificationMessage('');
@@ -85,17 +115,32 @@ const BudgetPage = () => {
     if (!householdId) return;
 
     if (!notificationMessage.trim()) {
-      alert('Please enter a message');
+      setAlertModal({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'Please enter a message',
+        type: 'warning',
+      });
       return;
     }
 
     if (selectedChannels.length === 0) {
-      alert('Please select at least one notification channel');
+      setAlertModal({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'Please select at least one notification channel',
+        type: 'warning',
+      });
       return;
     }
 
     if (!senderEmail.trim() || !senderEmail.includes('@')) {
-      alert('Please enter a valid sender email address');
+      setAlertModal({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'Please enter a valid sender email address',
+        type: 'warning',
+      });
       return;
     }
 
@@ -108,12 +153,22 @@ const BudgetPage = () => {
         senderEmail: senderEmail.trim(),
       });
       
-      alert(`✅ ${result.message || 'Notification sent successfully!'}`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Success!',
+        message: `✅ ${result.message || 'Notification sent successfully!'}`,
+        type: 'success',
+      });
       setShowNotificationModal(false);
       setNotificationMessage('');
     } catch (error) {
       console.error('Failed to send notification:', error);
-      alert(`Failed to send notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: `Failed to send notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error',
+      });
     } finally {
       setIsN8nSending(false);
     }
@@ -122,90 +177,76 @@ const BudgetPage = () => {
   // Calculate stats dynamically from expenses
   const stats = useMemo(() => {
     if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
-      return { thisWeek: 0, thisMonth: 0, averagePerWeek: 0 };
+      return { today: 0, thisMonth: 0, averagePerWeek: 0 };
     }
 
     try {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay());
+      today.setHours(0, 0, 0, 0);
       
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      monthStart.setHours(0, 0, 0, 0);
 
-      const thisWeek = expenses
+      // Calculate today's expenses
+      const todayExpenses = expenses
         .filter((e) => {
           if (!e || !e.date) return false;
           if (e.amount === undefined || e.amount === null) return false;
           try {
-            // Parse date string (format: YYYY-MM-DD) to avoid timezone issues
             const dateParts = e.date.split('T')[0].split('-');
             if (dateParts.length !== 3) return false;
-            const expenseDateOnly = new Date(
+            const expenseDate = new Date(
               parseInt(dateParts[0], 10),
               parseInt(dateParts[1], 10) - 1,
               parseInt(dateParts[2], 10)
             );
-            if (isNaN(expenseDateOnly.getTime())) return false;
-            // Include expenses from Sunday of this week up to and including today
-            return expenseDateOnly >= weekStart && expenseDateOnly <= today;
+            expenseDate.setHours(0, 0, 0, 0);
+            if (isNaN(expenseDate.getTime())) return false;
+            return expenseDate.getTime() === today.getTime();
           } catch {
             return false;
           }
         })
         .reduce((sum, e) => {
-          let amount = 0;
-          if (typeof e.amount === 'number') {
-            amount = e.amount;
-          } else if (e.amount != null && e.amount !== '') {
-            const parsed = parseFloat(String(e.amount));
-            if (!isNaN(parsed)) {
-              amount = parsed;
-            }
-          }
+          const amount = typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount)) || 0;
           return sum + amount;
         }, 0);
 
+      // Calculate this month's expenses
       const thisMonth = expenses
         .filter((e) => {
           if (!e || !e.date) return false;
           if (e.amount === undefined || e.amount === null) return false;
           try {
-            // Parse date string (format: YYYY-MM-DD) to avoid timezone issues
             const dateParts = e.date.split('T')[0].split('-');
             if (dateParts.length !== 3) return false;
-            const expenseDateOnly = new Date(
+            const expenseDate = new Date(
               parseInt(dateParts[0], 10),
               parseInt(dateParts[1], 10) - 1,
               parseInt(dateParts[2], 10)
             );
-            if (isNaN(expenseDateOnly.getTime())) return false;
-            // Include expenses from first day of month up to and including today
-            return expenseDateOnly >= monthStart && expenseDateOnly <= today;
+            expenseDate.setHours(0, 0, 0, 0);
+            if (isNaN(expenseDate.getTime())) return false;
+            return expenseDate >= monthStart && expenseDate <= today;
           } catch {
             return false;
           }
         })
         .reduce((sum, e) => {
-          let amount = 0;
-          if (typeof e.amount === 'number') {
-            amount = e.amount;
-          } else if (e.amount != null && e.amount !== '') {
-            const parsed = parseFloat(String(e.amount));
-            if (!isNaN(parsed)) {
-              amount = parsed;
-            }
-          }
+          const amount = typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount)) || 0;
           return sum + amount;
         }, 0);
 
       // Calculate average per week: total expenses in current month / number of weeks passed
-      const weeksInMonth = Math.ceil((now.getDate() + monthStart.getDay()) / 7);
-      const averagePerWeek = weeksInMonth > 0 ? thisMonth / weeksInMonth : 0;
+      const daysPassed = Math.floor((today.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const weeksPassed = Math.max(1, Math.ceil(daysPassed / 7));
+      const averagePerWeek = thisMonth / weeksPassed;
 
-      return { thisWeek, thisMonth, averagePerWeek };
-    } catch {
-      return { thisWeek: 0, thisMonth: 0, averagePerWeek: 0 };
+      return { today: todayExpenses, thisMonth, averagePerWeek };
+    } catch (error) {
+      console.error('Error calculating stats:', error);
+      return { today: 0, thisMonth: 0, averagePerWeek: 0 };
     }
   }, [expenses]);
 
@@ -376,10 +417,13 @@ const BudgetPage = () => {
       <DashboardNav />
       <div className="budget-content">
         <div className="budget-header">
-          <h1 className="page-title">Budget & Expenses</h1>
+          <div className="header-content">
+            <h1 className="page-title">Budget & Expenses</h1>
+            <p className="page-subtitle">Track and manage your household spending</p>
+          </div>
           <div className="budget-action-buttons">
             <button className="add-expense-btn" onClick={handleAddExpense}>
-              +Add Expense
+              Add Expense
             </button>
             <button 
               className="ai-button" 
@@ -387,7 +431,7 @@ const BudgetPage = () => {
               disabled={isAIGenerating}
               title="Generate AI-powered sample data"
             >
-              {isAIGenerating ? '🤖 Generating...' : '🤖 AI Generate'}
+              {isAIGenerating ? 'Generating...' : 'AI Generate'}
             </button>
             <button 
               className="n8n-button" 
@@ -395,15 +439,15 @@ const BudgetPage = () => {
               disabled={isN8nSending}
               title="Send notification via email/telegram/slack"
             >
-              {isN8nSending ? '📧 Sending...' : '📧 Send Notification'}
+              {isN8nSending ? 'Sending...' : 'Send Notification'}
             </button>
           </div>
         </div>
 
         <div className="stats-cards">
           <div className="stat-card">
-            <h3 className="stat-label">Todays Expenses</h3>
-            <p className="stat-value">${stats.thisWeek.toFixed(2)}</p>
+            <h3 className="stat-label">Today's Expenses</h3>
+            <p className="stat-value">${stats.today.toFixed(2)}</p>
           </div>
           <div className="stat-card">
             <h3 className="stat-label">This Month</h3>
@@ -619,6 +663,24 @@ const BudgetPage = () => {
         message={`Are you sure you want to delete ${selectedExpense?.store || selectedExpense?.category || 'this expense'}?`}
         confirmText="Delete"
         cancelText="Cancel"
+      />
+
+      <ConfirmModal
+        isOpen={confirmAIGenerate}
+        onClose={() => setConfirmAIGenerate(false)}
+        onConfirm={handleConfirmAIGenerate}
+        title="Generate AI Data"
+        message="This will generate AI-powered sample data (ingredients with nutrition, recipes, pantry items). Continue?"
+        confirmText="Continue"
+        cancelText="Cancel"
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
       />
 
       {/* Notification Modal */}

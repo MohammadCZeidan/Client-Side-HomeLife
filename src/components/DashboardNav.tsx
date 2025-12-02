@@ -14,7 +14,7 @@ const DashboardNav = () => {
     navigate('/');
   };
 
-  // Determine active page based on current location
+  // Figure out which nav item should be highlighted based on current URL
   const getActiveClass = (path: string) => {
     return location.pathname === path ? 'active' : '';
   };

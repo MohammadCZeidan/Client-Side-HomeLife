@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
+import AlertModal from '../components/AlertModal';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { mealPlanAPI } from '../services';
@@ -17,6 +18,12 @@ const WeeklyPlanPage = () => {
   const [selectedMeal, setSelectedMeal] = useState<string>('');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isAddingMeal, setIsAddingMeal] = useState(false);
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error',
+  });
 
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const dayMap: Record<string, string> = {
@@ -58,13 +65,23 @@ const WeeklyPlanPage = () => {
     
     if (!recipe || !householdId) {
       console.error('Recipe or household ID missing:', { recipe: !!recipe, householdId: !!householdId });
-      alert('Recipe or household ID missing. Please try again.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Recipe or household ID missing. Please try again.',
+        type: 'error',
+      });
       return;
     }
     
     if (!selectedDay || !selectedMeal) {
       console.error('Day or meal not selected:', { selectedDay, selectedMeal });
-      alert('Day or meal not selected. Please try again.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Day or meal not selected. Please try again.',
+        type: 'error',
+      });
       return;
     }
     
@@ -126,7 +143,12 @@ const WeeklyPlanPage = () => {
       console.error('Failed to add meal:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to add meal. Please try again.';
       console.error('Error details:', errorMessage);
-      alert(`Failed to add meal: ${errorMessage}`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: `Failed to add meal: ${errorMessage}`,
+        type: 'error',
+      });
       // Reset state on error
       setSelectedRecipe(null);
     } finally {
@@ -231,6 +253,13 @@ const WeeklyPlanPage = () => {
         </div>
       </Modal>
 
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 };

@@ -1,4 +1,8 @@
 import { Link } from 'react-router-dom';
+import photo1 from '../assets/photo1.png';
+import signupImage from '../assets/signup.png';
+import recieveImage from '../assets/recieve.png';
+import trackImage from '../assets/track.jpeg';
 import './LandingPage.css';
 
 const LandingPage = () => {
@@ -29,7 +33,7 @@ const LandingPage = () => {
           <Link to="/register" className="cta-button">Start Your Journey</Link>
         </div>
         <div className="hero-image">
-          <div className="image-placeholder"></div>
+          <img src={photo1} alt="Healthy lifestyle" className="hero-image-content" />
         </div>
       </div>
 
@@ -56,15 +60,15 @@ const LandingPage = () => {
         <h2>How It Works</h2>
         <div className="steps">
           <div className="step">
-            <div className="step-image"></div>
+            <img src={signupImage} alt="Signup & set goals" className="step-image" />
             <h3>Signup & set goals</h3>
           </div>
           <div className="step">
-            <div className="step-image"></div>
+            <img src={recieveImage} alt="Recieve Personalized Plans" className="step-image" />
             <h3>Recieve Personalized Plans</h3>
           </div>
           <div className="step">
-            <div className="step-image"></div>
+            <img src={trackImage} alt="Track & Improve Health" className="step-image" />
             <h3>Track & Improve Health</h3>
           </div>
         </div>
