@@ -64,22 +64,17 @@ const AdminPage = () => {
       setHouseholds(allHouseholds);
     } catch (err) {
       console.error('Failed to load households:', err);
-      // Don't show error to user for households, just log it
     }
   };
 
-  // Filter users by search term and selected filters
   const filteredUsers = users.filter((user) => {
-    // Check if matches search (name, email, or household name)
     const matchesSearch = 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.householdName && user.householdName.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    // Check role filter
     const matchesRole = filterRole === 'all' || user.role === filterRole;
 
-    // Check household filter (with/without household)
     const matchesHousehold = 
       filterHousehold === 'all' ||
       (filterHousehold === 'with' && user.householdId !== null) ||
@@ -88,7 +83,6 @@ const AdminPage = () => {
     return matchesSearch && matchesRole && matchesHousehold;
   });
 
-  // Group filtered users by household for display
   const usersByHousehold = filteredUsers.reduce((acc, user) => {
     const key = user.householdId || 'no-household';
     if (!acc[key]) {

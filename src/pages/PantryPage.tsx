@@ -52,14 +52,12 @@ const PantryPage = () => {
       const ingredientName = formData.ingredient.trim();
       const quantityToAdd = parseFloat(formData.quantity);
       
-      // Check if ingredient already exists in pantry (by name only, case-insensitive)
       const existingPantryItem = (pantryItems || []).find(
         (pantryItem) => 
           pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase()
       );
       
       if (existingPantryItem) {
-        // If ingredient exists, add quantity to existing item
         const newQuantity = existingPantryItem.quantity + quantityToAdd;
         await pantryAPI.update(existingPantryItem.id, {
           quantity: newQuantity,
@@ -67,12 +65,11 @@ const PantryPage = () => {
         });
         console.log(`Updated "${ingredientName}" in pantry: ${existingPantryItem.quantity} + ${quantityToAdd} = ${newQuantity}`);
       } else {
-        // If ingredient doesn't exist, create new pantry item
-        await pantryAPI.create({
-          ...formData,
+      await pantryAPI.create({
+        ...formData,
           quantity: quantityToAdd,
-          householdId,
-        });
+        householdId,
+      });
         console.log(`Added "${ingredientName}" to pantry`);
       }
       
@@ -111,9 +108,7 @@ const PantryPage = () => {
         householdId,
       });
       console.log('Updated item from API:', updatedItem);
-      // Wait a bit to ensure backend has processed the update
       await new Promise(resolve => setTimeout(resolve, 100));
-      // Refresh pantry to get the latest data from backend
       await refreshPantry();
       setIsEditModalOpen(false);
       setSelectedItem(null);
@@ -178,17 +173,14 @@ const PantryPage = () => {
 
   const openEditModal = (item: PantryItem) => {
     setSelectedItem(item);
-    // Format dates for date input (YYYY-MM-DD)
     const formatDateForInput = (dateString: string): string => {
       if (!dateString) return new Date().toISOString().split('T')[0];
       if (dateString.includes('T')) {
         return dateString.split('T')[0];
       }
-      // If already in YYYY-MM-DD format, return as is
       if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
         return dateString;
       }
-      // Try to parse and format
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         return new Date().toISOString().split('T')[0];

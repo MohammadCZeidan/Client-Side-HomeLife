@@ -41,10 +41,7 @@ const BudgetPage = () => {
     store: '',
   });
 
-  // AI button state
   const [isAIGenerating, setIsAIGenerating] = useState(false);
-  
-  // Alert and confirm modals
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({
     isOpen: false,
     title: '',
@@ -89,9 +86,6 @@ const BudgetPage = () => {
       setIsAIGenerating(false);
     }
   };
-
-
-  // Calculate stats dynamically from expenses
   const stats = useMemo(() => {
     if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
       return { today: 0, thisMonth: 0, averagePerWeek: 0 };
@@ -99,8 +93,6 @@ const BudgetPage = () => {
 
     try {
       const now = new Date();
-      // Get today's date in local timezone (YYYY-MM-DD format for comparison)
-      // Use local date components instead of ISO string to avoid timezone issues
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
@@ -109,25 +101,21 @@ const BudgetPage = () => {
       const todayDate = new Date(year, now.getMonth(), now.getDate());
       todayDate.setHours(0, 0, 0, 0);
       
-      // Get first day of current month
       const monthStart = new Date(year, now.getMonth(), 1);
       monthStart.setHours(0, 0, 0, 0);
       
-      // Get last day of current month
       const monthEnd = new Date(year, now.getMonth() + 1, 0);
       monthEnd.setHours(23, 59, 59, 999);
 
-      // Helper function to parse expense date string to Date object
       const parseExpenseDate = (dateStr: string): Date | null => {
         if (!dateStr) return null;
         try {
-          // Handle both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss" formats
           const dateOnly = dateStr.split('T')[0];
           const parts = dateOnly.split('-');
           if (parts.length !== 3) return null;
           
           const year = parseInt(parts[0], 10);
-          const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+          const month = parseInt(parts[1], 10) - 1;
           const day = parseInt(parts[2], 10);
           
           const date = new Date(year, month, day);
@@ -140,7 +128,6 @@ const BudgetPage = () => {
         }
       };
 
-      // Calculate today's expenses - compare date strings to avoid timezone issues
       const todayExpenses = expenses
         .filter((e) => {
           if (!e || !e.date) return false;
@@ -154,7 +141,6 @@ const BudgetPage = () => {
           return sum + amount;
         }, 0);
 
-      // Calculate this month's expenses - include all expenses in the current month (including future dates)
       const thisMonth = expenses
         .filter((e) => {
           if (!e || !e.date) return false;
@@ -163,7 +149,6 @@ const BudgetPage = () => {
           const expenseDate = parseExpenseDate(e.date);
           if (!expenseDate) return false;
           
-          // Include all expenses from month start to month end (including future dates in the month)
           return expenseDate >= monthStart && expenseDate <= monthEnd;
         })
         .reduce((sum, e) => {
@@ -171,7 +156,6 @@ const BudgetPage = () => {
           return sum + amount;
         }, 0);
 
-      // Calculate average per week: total month expenses / 4 (assuming 4 weeks per month)
       const averagePerWeek = thisMonth / 4;
 
       return { today: todayExpenses, thisMonth, averagePerWeek };
@@ -181,7 +165,6 @@ const BudgetPage = () => {
     }
   }, [expenses]);
 
-  // Sort expenses by date (most recent first)
   const sortedExpenses = useMemo(() => {
     if (!expenses || !Array.isArray(expenses)) return [];
     try {

@@ -101,7 +101,7 @@
   box-shadow: var(--shadow-md);
 }
 
-/* Profile Edit Form Styles */
+/* form */
 .profile-edit-form {
   display: flex;
   flex-direction: column;

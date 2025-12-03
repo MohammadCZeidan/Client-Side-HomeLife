@@ -40,13 +40,11 @@ const ShoppingListPage = () => {
   useEffect(() => {
     if (householdId) {
       refreshShoppingLists();
-      // Fetch weekly plan directly
       mealPlanAPI.getWeeklyPlan(householdId, weekStartDate).then(setWeeklyPlan).catch(console.error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [householdId]);
 
-  // Auto-select first list if available
   useEffect(() => {
     if (shoppingLists && shoppingLists.length > 0 && !selectedList) {
       setSelectedList(shoppingLists[0]);
@@ -60,13 +58,11 @@ const ShoppingListPage = () => {
     }
 
     try {
-      // Get all recipes from the meal plan
       const allRecipes = weeklyPlan.meals.map((meal) => meal.recipe);
       const uniqueRecipes = Array.from(
         new Map(allRecipes.map((recipe) => [recipe.id, recipe])).values()
       );
 
-      // Check ingredients for all recipes and collect missing items
       const allMissingItems: Array<{
         ingredient: string;
         needed: number;
@@ -80,7 +76,6 @@ const ShoppingListPage = () => {
         allMissingItems.push(...checkResult.missingIngredients);
       }
 
-      // Aggregate ingredients (sum up quantities for same ingredient)
       const aggregatedItems = new Map<string, { ingredient: string; shortfall: number; unit: string }>();
       for (const item of allMissingItems) {
         const key = `${item.ingredient}_${item.unit}`;
@@ -96,10 +91,8 @@ const ShoppingListPage = () => {
         }
       }
 
-      // Get or create default shopping list
       let shoppingList = await shoppingListAPI.getOrCreateDefaultList(householdId);
 
-      // Convert to shopping list items
       const shoppingItems = Array.from(aggregatedItems.values()).map((item) => ({
         name: `${item.ingredient} - ${item.shortfall} ${item.unit}`,
         quantity: item.shortfall,
@@ -160,7 +153,6 @@ const ShoppingListPage = () => {
     try {
       const newBoughtStatus = !item.bought;
       
-      // Update the individual item using the updateItem endpoint
       await shoppingListAPI.updateItem(
         selectedList.id,
         item.id,
@@ -168,20 +160,15 @@ const ShoppingListPage = () => {
         householdId
       );
 
-      // If item is being checked (bought = true), add it to the pantry
       if (newBoughtStatus) {
         try {
-          // Parse item name to extract ingredient, quantity, and unit
-          // Format: "INGREDIENT - QUANTITY UNIT" or just "INGREDIENT"
           const itemParts = item.name.split(' - ');
           const ingredientName = itemParts[0].trim();
           
-          // Use quantity and unit from the item if available, otherwise parse from name
           let quantity = item.quantity || 0;
           let unit = item.unit || 'g';
           
           if (itemParts.length > 1) {
-            // Try to parse quantity and unit from the second part
             const quantityUnitPart = itemParts[1].trim();
             const quantityMatch = quantityUnitPart.match(/^([\d.]+)\s*(.+)$/);
             if (quantityMatch) {
@@ -196,16 +183,13 @@ const ShoppingListPage = () => {
             }
           }
           
-          // Only add to pantry if we have valid quantity
           if (quantity > 0 && ingredientName) {
-            // Check if ingredient already exists in pantry (by name only, case-insensitive)
             const existingPantryItem = pantryItems?.find(
               (pantryItem) => 
                 pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase()
             );
             
             if (existingPantryItem) {
-              // If ingredient exists, add quantity to existing item
               const newQuantity = existingPantryItem.quantity + quantity;
               await pantryAPI.update(existingPantryItem.id, {
                 quantity: newQuantity,
@@ -213,10 +197,7 @@ const ShoppingListPage = () => {
               });
               console.log(`Updated "${ingredientName}" in pantry: ${existingPantryItem.quantity} + ${quantity} = ${newQuantity}`);
             } else {
-              // If ingredient doesn't exist, create new pantry item
-              // Set date bought to today
               const dateBought = new Date();
-              // Calculate expiry date (7 days from today)
               const expiryDate = new Date();
               expiryDate.setDate(expiryDate.getDate() + 7);
               
@@ -232,20 +213,15 @@ const ShoppingListPage = () => {
               console.log(`Added "${ingredientName}" to pantry`);
             }
             
-            // Refresh pantry to show the updated/new item
             await refreshPantry();
           }
         } catch (pantryError) {
           console.error('Failed to add item to pantry:', pantryError);
-          // Don't fail the whole operation if pantry add fails
-          // The item is still marked as bought in the shopping list
         }
       }
 
-      // Refresh the shopping lists to get updated data
       await refreshShoppingLists();
       
-      // Update the selected list with fresh data
       const updatedLists = await shoppingListAPI.getAll(householdId);
       const updatedList = updatedLists.find((l) => l.id === selectedList.id);
       if (updatedList) {
@@ -300,14 +276,13 @@ const ShoppingListPage = () => {
   const handleConfirmDeleteItem = async () => {
     if (!deleteItemConfirm.itemId || !selectedList || !householdId) return;
     try {
-      const updatedItems = selectedList.items.filter((i) => i.id !== deleteItemConfirm.itemId);
-      const updatedList = await shoppingListAPI.update(
-        selectedList.id,
-        { items: updatedItems },
-        householdId
-      );
-      setSelectedList(updatedList);
+      await shoppingListAPI.deleteItem(selectedList.id, deleteItemConfirm.itemId, householdId);
       await refreshShoppingLists();
+      const updatedLists = await shoppingListAPI.getAll(householdId);
+      const updatedList = updatedLists.find((l) => l.id === selectedList.id);
+      if (updatedList) {
+        setSelectedList(updatedList);
+      }
       setDeleteItemConfirm({ isOpen: false, itemId: null });
     } catch (error) {
       console.error('Failed to delete item:', error);

@@ -34,7 +34,6 @@ const HomePage = () => {
       refreshExpenses();
       refreshShoppingLists();
       
-      // Load weekly insights
       setIsLoadingInsights(true);
       const weekStartDate = getWeekStartDate();
       insightsAPI.getWeeklyInsights(householdId, weekStartDate)
@@ -43,9 +42,8 @@ const HomePage = () => {
         .finally(() => setIsLoadingInsights(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [household?.id, user?.householdId]); // Only depend on householdId to avoid infinite loops
+  }, [household?.id, user?.householdId]);
 
-  // Calculate expiring items (items expiring in 7 days or less)
   const expiringItems = (pantryItems || []).filter((item) => {
     if (!item || !item.expiryDate) return false;
     try {
@@ -56,21 +54,19 @@ const HomePage = () => {
     }
   });
 
-  // Calculate this week's expenses (synchronized with BudgetPage calculation)
   const thisWeekExpenses = (expenses || [])
     .filter((exp) => {
       if (!exp || !exp.date || !exp.amount) return false;
       try {
         const now = new Date();
         const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
+        weekStart.setDate(now.getDate() - now.getDay());
         weekStart.setHours(0, 0, 0, 0);
         
         const expenseDate = new Date(exp.date);
         if (isNaN(expenseDate.getTime())) return false;
         expenseDate.setHours(0, 0, 0, 0);
         
-        // Include expenses from week start to now
         return expenseDate >= weekStart && expenseDate <= now;
       } catch {
         return false;
@@ -81,7 +77,6 @@ const HomePage = () => {
       return sum + amount;
     }, 0);
 
-  // Calculate total shopping list items across all lists
   const totalShoppingItems = (shoppingLists || []).reduce((total, list) => {
     return total + (list.items?.length || 0);
   }, 0);

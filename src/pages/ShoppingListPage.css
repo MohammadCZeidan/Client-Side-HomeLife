@@ -302,7 +302,7 @@
   color: #000000;
 }
 
-/* Removed old button styles - now using compact card design */
+/* cards */
 
 .list-detail {
   width: 100%;
@@ -466,7 +466,7 @@
   font-weight: 400;
 }
 
-/* Shopping Form Styles */
+/* form */
 .shopping-form {
   display: flex;
   flex-direction: column;
