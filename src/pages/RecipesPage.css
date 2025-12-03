@@ -255,7 +255,7 @@
   font-weight: 400;
 }
 
-/* Removed duplicate view-recipe-btn styles - using recipe-actions styles below */
+/* recipe actions */
 
 .recipe-actions {
   display: flex;
@@ -337,7 +337,7 @@
   margin: 0;
 }
 
-/* Recipe Form Styles */
+/* form */
 .recipe-form {
   display: flex;
   flex-direction: column;
@@ -531,7 +531,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-/* Recipe Details View */
+/* details */
 .recipe-details {
   display: flex;
   flex-direction: column;

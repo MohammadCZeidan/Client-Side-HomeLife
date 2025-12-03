@@ -13,7 +13,6 @@ const RecipesPage = () => {
   const { user, household } = useAuth();
   const { recipes, refreshRecipes, pantryItems, refreshPantry } = useApp();
   
-  // Safety check
   if (!recipes) {
     console.warn('Recipes is undefined in RecipesPage');
   }
@@ -76,14 +75,12 @@ const RecipesPage = () => {
   };
 
   const handleViewRecipe = async (recipe: Recipe) => {
-    // Fetch the full recipe to ensure we have all ingredient data
     try {
       const fullRecipe = await recipeAPI.getById(recipe.id, householdId);
       if (fullRecipe) {
         console.log('Viewing recipe with ingredients:', fullRecipe.ingredients);
         setSelectedRecipe(fullRecipe);
         
-        // Load substitutions for missing ingredients
         setIsLoadingSubstitutions(true);
         try {
           const subs = await recipeAPI.getSubstitutions(recipe.id);
@@ -101,7 +98,6 @@ const RecipesPage = () => {
       }
     } catch (error) {
       console.error('Error fetching recipe:', error);
-      // Fallback to the recipe from the list
       setSelectedRecipe(recipe);
     }
     setIsViewModalOpen(true);
@@ -136,7 +132,6 @@ const RecipesPage = () => {
   };
 
   const handleEditRecipe = async (recipe: Recipe) => {
-    // Fetch the full recipe to ensure we have all ingredient data with correct amounts
     try {
       const fullRecipe = await recipeAPI.getById(recipe.id, householdId);
       if (fullRecipe) {

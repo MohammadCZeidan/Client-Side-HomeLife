@@ -56,7 +56,6 @@ const ProfilePage = () => {
     try {
       const response = await householdAPI.generateInviteCode();
       setInviteCode(response.inviteCode);
-      // Refresh household data to get updated invite code and members
       const householdInfo = await householdAPI.get();
       if (householdInfo) {
         setHouseholdData(householdInfo);
@@ -87,7 +86,6 @@ const ProfilePage = () => {
     setError('');
     setLoading(true);
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address');
@@ -136,14 +134,12 @@ const ProfilePage = () => {
 
   const handleConfirmRemove = async () => {
     if (memberToRemove) {
-      // TODO: Implement remove member API call when backend endpoint is available
       console.log(`Remove member functionality will be implemented when the backend endpoint is available.`);
       setShowRemoveConfirm(false);
       setMemberToRemove(null);
     }
   };
 
-  // Get members from household data
   const members = householdData?.members || household?.members || [];
 
   return (
