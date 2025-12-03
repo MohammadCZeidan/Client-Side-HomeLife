@@ -210,25 +210,25 @@ const HomePage = () => {
 
         <div className="quick-actions-section">
           <div className="section-header">
-            <h2 className="section-title">Quick Actions</h2>
+            <h2 className="section-title">Quick Bar</h2>
             <p className="section-subtitle">Manage your household efficiently</p>
           </div>
           <div className="action-buttons">
             <button className="action-btn" onClick={() => navigate('/pantry')}>
               <span className="action-btn-icon">
-                <Package size={18} strokeWidth={2} />
+                <Package size={24} strokeWidth={2} />
               </span>
               <span className="action-btn-text">Add Items</span>
             </button>
             <button className="action-btn" onClick={() => navigate('/recipes')}>
               <span className="action-btn-icon">
-                <Clock size={18} strokeWidth={2} />
+                <Clock size={24} strokeWidth={2} />
               </span>
               <span className="action-btn-text">Create Meal</span>
             </button>
             <button className="action-btn" onClick={() => navigate('/shopping')}>
               <span className="action-btn-icon">
-                <ShoppingCart size={18} strokeWidth={2} />
+                <ShoppingCart size={24} strokeWidth={2} />
               </span>
               <span className="action-btn-text">Create List</span>
             </button>

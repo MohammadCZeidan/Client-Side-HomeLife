@@ -8,9 +8,9 @@
 
 .shopping-content {
   margin-left: 224px;
-  padding: var(--spacing-2xl);
+  padding: var(--spacing-xl);
   width: calc(100% - 224px);
-  max-width: 1400px;
+  max-width: none;
 }
 
 .shopping-header {

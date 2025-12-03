@@ -1,7 +1,11 @@
+// TypeScript type for User data structure
 import type { User } from '../types';
+// API call utility and base URL constant
 import { apiCall, API_BASE_URL } from './apiCall';
+// Axios for direct HTTP requests (needed for login/register without auth token)
 import axios, { AxiosError } from 'axios';
 
+// Authentication API service - handles all user authentication operations
 export const authAPI = {
   login: async (email: string, password: string): Promise<{ user: User; token: string }> => {
     try {

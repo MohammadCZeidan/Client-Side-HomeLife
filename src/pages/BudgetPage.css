@@ -8,9 +8,9 @@
 
 .budget-content {
   margin-left: 224px;
-  padding: var(--spacing-2xl);
+  padding: var(--spacing-xl);
   width: calc(100% - 224px);
-  max-width: 1400px;
+  max-width: none;
 }
 
 .budget-header {
@@ -87,8 +87,7 @@
   transform: none;
 }
 
-.ai-button,
-.n8n-button {
+.ai-button {
   padding: var(--spacing-sm) var(--spacing-xl);
   border: 1px solid transparent;
   border-radius: var(--radius);
@@ -101,9 +100,6 @@
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   letter-spacing: 0.02em;
-}
-
-.ai-button {
   background: var(--primary);
   border-color: var(--primary-dark);
 }
@@ -115,20 +111,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-.n8n-button {
-  background: var(--accent);
-  border-color: var(--accent-dark);
-}
-
-.n8n-button:hover:not(:disabled) {
-  background: var(--accent-dark);
-  border-color: var(--accent-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-}
-
-.ai-button:disabled,
-.n8n-button:disabled {
+.ai-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;

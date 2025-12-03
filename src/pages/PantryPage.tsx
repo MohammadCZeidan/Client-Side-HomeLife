@@ -35,11 +35,11 @@ const PantryPage = () => {
   }, [householdId, refreshPantry]);
 
   const filteredItems = filterExpiring
-    ? pantryItems.filter((item) => {
+    ? (pantryItems || []).filter((item) => {
         const days = getDaysUntilExpiry(item.expiryDate);
         return days >= 0 && days <= 7;
       })
-    : pantryItems;
+    : (pantryItems || []);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,11 +49,33 @@ const PantryPage = () => {
     }
     
     try {
-      await pantryAPI.create({
-        ...formData,
-        quantity: parseFloat(formData.quantity),
-        householdId,
-      });
+      const ingredientName = formData.ingredient.trim();
+      const quantityToAdd = parseFloat(formData.quantity);
+      
+      // Check if ingredient already exists in pantry (by name only, case-insensitive)
+      const existingPantryItem = (pantryItems || []).find(
+        (pantryItem) => 
+          pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase()
+      );
+      
+      if (existingPantryItem) {
+        // If ingredient exists, add quantity to existing item
+        const newQuantity = existingPantryItem.quantity + quantityToAdd;
+        await pantryAPI.update(existingPantryItem.id, {
+          quantity: newQuantity,
+          householdId,
+        });
+        console.log(`Updated "${ingredientName}" in pantry: ${existingPantryItem.quantity} + ${quantityToAdd} = ${newQuantity}`);
+      } else {
+        // If ingredient doesn't exist, create new pantry item
+        await pantryAPI.create({
+          ...formData,
+          quantity: quantityToAdd,
+          householdId,
+        });
+        console.log(`Added "${ingredientName}" to pantry`);
+      }
+      
       await refreshPantry();
       setIsAddModalOpen(false);
       setFormData({
@@ -119,8 +141,9 @@ const PantryPage = () => {
   const handleConfirmDelete = async () => {
     if (!deleteConfirm.itemId || !householdId) return;
     try {
-      await pantryAPI.delete(id, householdId);
+      await pantryAPI.delete(deleteConfirm.itemId, householdId);
       await refreshPantry();
+      setDeleteConfirm({ isOpen: false, itemId: null });
       console.log('Item deleted successfully!');
     } catch (error) {
       console.error('Failed to delete item:', error);

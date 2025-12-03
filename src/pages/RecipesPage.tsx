@@ -523,33 +523,31 @@ const RecipesPage = () => {
     <div className="recipes-page">
       <DashboardNav />
       <div className="recipes-content">
-        <h1 className="page-title">Recipes</h1>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
-          <button className="add-recipe-btn" onClick={handleAddRecipe}>
-            Add Recipe
-          </button>
-          <button 
-            className="add-recipe-btn" 
-            onClick={handleGetAISuggestions}
-            disabled={isLoadingSuggestions}
-            style={{ backgroundColor: '#4CAF50' }}
-          >
-            {isLoadingSuggestions ? 'Loading...' : '🤖 Cook from my Pantry'}
-          </button>
+        <div className="recipes-header">
+          <div className="header-content">
+            <h1 className="page-title">Recipes</h1>
+            <p className="page-subtitle">Discover and manage your favorite recipes</p>
+          </div>
+          <div className="recipes-action-buttons">
+            <button className="add-recipe-btn" onClick={handleAddRecipe}>
+              Add Recipe
+            </button>
+            <button 
+              className="ai-cook-btn" 
+              onClick={handleGetAISuggestions}
+              disabled={isLoadingSuggestions}
+            >
+              {isLoadingSuggestions ? 'Loading...' : 'Cook from my Pantry'}
+            </button>
+          </div>
         </div>
 
         {aiSuggestions.length > 0 && (
-          <div style={{ 
-            background: '#f0f8ff', 
-            padding: '15px', 
-            borderRadius: '8px', 
-            marginBottom: '20px',
-            border: '1px solid #4CAF50'
-          }}>
-            <h3 style={{ marginTop: 0, color: '#4CAF50' }}>🤖 AI Recipe Suggestions</h3>
-            <ul style={{ margin: '10px 0', paddingLeft: '20px' }}>
+          <div className="ai-suggestions-box">
+            <h3 className="ai-suggestions-title">AI Recipe Suggestions</h3>
+            <ul className="ai-suggestions-list">
               {aiSuggestions.map((suggestion, idx) => (
-                <li key={idx} style={{ marginBottom: '8px' }}>{suggestion}</li>
+                <li key={idx}>{suggestion}</li>
               ))}
             </ul>
           </div>

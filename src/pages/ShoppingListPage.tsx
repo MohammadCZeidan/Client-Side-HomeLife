@@ -198,11 +198,10 @@ const ShoppingListPage = () => {
           
           // Only add to pantry if we have valid quantity
           if (quantity > 0 && ingredientName) {
-            // Check if ingredient already exists in pantry (by name and unit)
+            // Check if ingredient already exists in pantry (by name only, case-insensitive)
             const existingPantryItem = pantryItems?.find(
               (pantryItem) => 
-                pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase() &&
-                pantryItem.unit.toLowerCase() === unit.toLowerCase()
+                pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase()
             );
             
             if (existingPantryItem) {
@@ -210,6 +209,7 @@ const ShoppingListPage = () => {
               const newQuantity = existingPantryItem.quantity + quantity;
               await pantryAPI.update(existingPantryItem.id, {
                 quantity: newQuantity,
+                householdId: householdId,
               });
               console.log(`Updated "${ingredientName}" in pantry: ${existingPantryItem.quantity} + ${quantity} = ${newQuantity}`);
             } else {

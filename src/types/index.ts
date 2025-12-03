@@ -1,17 +1,32 @@
-// User & Auth Types
+// ============================================
+// User & Authentication Types
+// ============================================
+
+// User interface - represents an authenticated user in the system
 export interface User {
+  // Unique identifier for the user
   id: string;
+  // User's email address (used for login)
   email: string;
+  // User's display name
   name: string;
+  // User's role - determines permissions and access level
   role: 'admin' | 'member';
+  // ID of household user belongs to (null if not in a household)
   householdId: string | null;
 }
 
+// Household interface - represents a household/group that users can join
 export interface Household {
+  // Unique identifier for the household
   id: string;
+  // Display name of the household
   name: string;
+  // Invite code for joining the household
   inviteCode: string;
+  // Array of users who are members of this household
   members: User[];
+  // ISO date string when household was created
   createdAt: string;
 }
 

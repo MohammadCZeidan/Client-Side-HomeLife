@@ -8,9 +8,9 @@
 
 .pantry-content {
   margin-left: 224px;
-  padding: var(--spacing-2xl);
+  padding: var(--spacing-xl);
   width: calc(100% - 224px);
-  max-width: 1400px;
+  max-width: none;
 }
 
 .page-title {
@@ -209,7 +209,7 @@
 .item-date,
 .item-location {
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
   color: var(--text-secondary);
   margin: 0;
@@ -231,12 +231,12 @@
 .consume-btn {
   flex: 1;
   min-width: 90px;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   background: var(--primary);
   border: 1px solid var(--primary-dark);
   border-radius: var(--radius);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   text-align: center;
   color: var(--white);
@@ -263,12 +263,12 @@
 .edit-btn {
   flex: 1;
   min-width: 90px;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   background: var(--white);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   text-align: center;
   color: var(--text-primary);
@@ -289,12 +289,12 @@
 .delete-btn {
   flex: 1;
   min-width: 90px;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
   background: var(--white);
   border: 1px solid var(--danger);
   border-radius: var(--radius);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   font-weight: 500;
   text-align: center;
   color: var(--danger);
@@ -408,6 +408,18 @@
   color: var(--text-secondary);
   margin-top: var(--spacing-xs);
   font-style: italic;
+}
+
+@media (max-width: 1400px) {
+  .pantry-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .pantry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {

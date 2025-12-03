@@ -10,8 +10,9 @@ const DashboardNav = () => {
   const location = useLocation();
 
   const handleLogout = async () => {
+    // Navigate to landing page first, then logout
+    navigate('/', { replace: true });
     await logout();
-    navigate('/');
   };
 
   // Figure out which nav item should be highlighted based on current URL

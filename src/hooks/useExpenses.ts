@@ -43,7 +43,7 @@ export const useUpdateExpense = (householdId: string) => {
   
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Expense> }) =>
-      budgetAPI.update(id, updates),
+      budgetAPI.update(id, updates, householdId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(householdId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.summary(householdId) });

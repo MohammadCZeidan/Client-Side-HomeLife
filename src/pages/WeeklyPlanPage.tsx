@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
 import AlertModal from '../components/AlertModal';
@@ -10,7 +10,7 @@ import type { Recipe, PlannedMeal, WeeklyPlan } from '../types';
 import './WeeklyPlanPage.css';
 
 const WeeklyPlanPage = () => {
-  const { user, household } = useAuth();
+  const { user, household, loading: authLoading } = useAuth();
   const { recipes, refreshRecipes } = useApp();
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan | null>(null);
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
@@ -18,6 +18,7 @@ const WeeklyPlanPage = () => {
   const [selectedMeal, setSelectedMeal] = useState<string>('');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isAddingMeal, setIsAddingMeal] = useState(false);
+  const [isRemovingMeal, setIsRemovingMeal] = useState<string | null>(null);
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({
     isOpen: false,
     title: '',
@@ -43,16 +44,26 @@ const WeeklyPlanPage = () => {
   const meals = ['Breakfast', 'Lunch', 'Dinner'];
 
   const householdId = household?.id || user?.householdId || '';
-  const weekStartDate = getWeekStartDate();
+  const weekStartDate = useMemo(() => getWeekStartDate(), []);
 
   useEffect(() => {
-    if (householdId) {
-      refreshRecipes();
-      // Fetch weekly plan directly
-      mealPlanAPI.getWeeklyPlan(householdId, weekStartDate).then(setWeeklyPlan).catch(console.error);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [householdId]);
+    const loadWeeklyPlan = async () => {
+      if (authLoading || !householdId) {
+        return;
+      }
+      
+      try {
+        await refreshRecipes();
+        const plan = await mealPlanAPI.getWeeklyPlan(householdId, weekStartDate);
+        setWeeklyPlan(plan || null);
+      } catch (error) {
+        console.error('Failed to load weekly plan:', error);
+        setWeeklyPlan(null);
+      }
+    };
+
+    loadWeeklyPlan();
+  }, [householdId, weekStartDate, authLoading, household, user, refreshRecipes]);
 
   const handleMealSlotClick = (day: string, meal: string) => {
     setSelectedDay(day);
@@ -61,10 +72,7 @@ const WeeklyPlanPage = () => {
   };
 
   const handleRecipeSelect = async (recipe: Recipe) => {
-    console.log('handleRecipeSelect called with:', { recipe, selectedDay, selectedMeal, householdId, weekStartDate });
-    
     if (!recipe || !householdId) {
-      console.error('Recipe or household ID missing:', { recipe: !!recipe, householdId: !!householdId });
       setAlertModal({
         isOpen: true,
         title: 'Error',
@@ -75,7 +83,6 @@ const WeeklyPlanPage = () => {
     }
     
     if (!selectedDay || !selectedMeal) {
-      console.error('Day or meal not selected:', { selectedDay, selectedMeal });
       setAlertModal({
         isOpen: true,
         title: 'Error',
@@ -86,7 +93,6 @@ const WeeklyPlanPage = () => {
     }
     
     if (isAddingMeal) {
-      console.log('Already adding a meal, please wait...');
       return;
     }
     
@@ -94,17 +100,8 @@ const WeeklyPlanPage = () => {
     setSelectedRecipe(recipe);
     
     try {
-      // Directly add meal to weekly plan
       const dayOfWeek = dayMap[selectedDay] as PlannedMeal['day'];
       const mealSlot = mealMap[selectedMeal] as PlannedMeal['slot'];
-
-      console.log('Adding meal with:', {
-        recipeId: recipe.id,
-        day: dayOfWeek,
-        slot: mealSlot,
-        weekStartDate,
-        householdId
-      });
 
       await mealPlanAPI.addMeal(householdId, weekStartDate, {
         recipeId: recipe.id,
@@ -112,44 +109,28 @@ const WeeklyPlanPage = () => {
         slot: mealSlot,
       });
       
-      console.log('Meal added, refreshing weekly plan...');
-      
-      // Close modal first
       setIsRecipeModalOpen(false);
+      setSelectedDay('');
+      setSelectedMeal('');
       
-      // Small delay to ensure backend has committed the meal
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Refresh the weekly plan to show the new meal
       const updatedPlan = await mealPlanAPI.getWeeklyPlan(householdId, weekStartDate);
-      console.log('Updated plan received:', updatedPlan);
-      console.log('Updated plan meals:', updatedPlan?.meals);
-      console.log('Week start date:', weekStartDate);
-      
       if (updatedPlan) {
         setWeeklyPlan(updatedPlan);
-        console.log('Weekly plan state updated with', updatedPlan.meals?.length || 0, 'meals');
       } else {
-        console.warn('Updated plan is null, trying to create it...');
-        // If plan is still null, try creating it
         const newPlan = await mealPlanAPI.createWeeklyPlan(householdId, weekStartDate);
         setWeeklyPlan(newPlan);
-        console.log('Created new plan:', newPlan);
       }
       
       setSelectedRecipe(null);
-      console.log('Meal added successfully!');
     } catch (error) {
       console.error('Failed to add meal:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to add meal. Please try again.';
-      console.error('Error details:', errorMessage);
       setAlertModal({
         isOpen: true,
         title: 'Error',
         message: `Failed to add meal: ${errorMessage}`,
         type: 'error',
       });
-      // Reset state on error
       setSelectedRecipe(null);
     } finally {
       setIsAddingMeal(false);
@@ -158,69 +139,143 @@ const WeeklyPlanPage = () => {
 
 
   const getMealForSlot = (day: string, meal: string): PlannedMeal | null => {
-    if (!weeklyPlan || !weeklyPlan.meals) {
-      console.log('getMealForSlot: No weekly plan or meals', { weeklyPlan, day, meal });
+    if (!weeklyPlan?.meals || weeklyPlan.meals.length === 0) {
       return null;
     }
+    
     const dayOfWeek = dayMap[day];
     const mealSlot = mealMap[meal];
-    const foundMeal = weeklyPlan.meals.find(
-      (m) => m.day === dayOfWeek && m.slot === mealSlot
-    );
-    console.log('getMealForSlot:', { day, meal, dayOfWeek, mealSlot, foundMeal, allMeals: weeklyPlan.meals });
+    
+    const foundMeal = weeklyPlan.meals.find((m) => {
+      if (!m) return false;
+      
+      let mealDay = m.day;
+      if (typeof mealDay === 'number') {
+        const dayNames: PlannedMeal['day'][] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        mealDay = dayNames[mealDay] || 'monday';
+      }
+      
+      const mealSlotNormalized = (m.slot || '').toLowerCase();
+      const targetSlotNormalized = (mealSlot || '').toLowerCase();
+      
+      return String(mealDay).toLowerCase() === String(dayOfWeek).toLowerCase() && 
+             mealSlotNormalized === targetSlotNormalized;
+    });
+    
     return foundMeal || null;
+  };
+
+  const handleRemoveMeal = async (e: React.MouseEvent, plannedMeal: PlannedMeal) => {
+    e.stopPropagation();
+    
+    if (!householdId || !weeklyPlan?.id) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Missing information. Please try again.',
+        type: 'error',
+      });
+      return;
+    }
+
+    setIsRemovingMeal(plannedMeal.id);
+    
+    try {
+      await mealPlanAPI.removeMeal(weeklyPlan.id, plannedMeal.id);
+      const updatedPlan = await mealPlanAPI.getWeeklyPlan(householdId, weekStartDate);
+      setWeeklyPlan(updatedPlan || null);
+    } catch (error) {
+      console.error('Failed to remove meal:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to remove meal. Please try again.';
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: `Failed to remove meal: ${errorMessage}`,
+        type: 'error',
+      });
+    } finally {
+      setIsRemovingMeal(null);
+    }
+  };
+
+  const getMealsForDay = (day: string): { meal: string; plannedMeal: PlannedMeal | null }[] => {
+    return meals.map((meal) => ({
+      meal,
+      plannedMeal: getMealForSlot(day, meal),
+    }));
   };
 
   return (
     <div className="weekly-plan-page">
       <DashboardNav />
       <div className="weekly-content">
-        <h1 className="page-title">Weekly Plan</h1>
-        
-        <div className="plan-container">
-          <div className="meals-sidebar">
-            <div className="sidebar-spacer"></div>
-            {meals.map((meal, index) => (
-              <div key={index} className="meal-label">{meal}</div>
-            ))}
+        <div className="weekly-header">
+          <h1 className="page-title">Weekly Meal Plan</h1>
+          <div className="week-info">
+            <span className="week-date">{weekStartDate}</span>
           </div>
-
-          <div className="plan-table">
-            <div className="table-header">
-              {days.map((day, index) => (
-                <div key={index} className="day-header">{day}</div>
-              ))}
-            </div>
-            <div className="table-body">
-              {meals.map((meal, mealIndex) => (
-                <div key={mealIndex} className="table-row">
-                  {days.map((day, dayIndex) => {
-                    const plannedMeal = getMealForSlot(day, meal);
+        </div>
+        
+        <div className="days-grid">
+          {days.map((day, dayIndex) => {
+            const dayMeals = getMealsForDay(day);
+            return (
+              <div key={`day-${day}-${dayIndex}`} className="day-card">
+                <div className="day-card-header">
+                  <h2 className="day-name">{day}</h2>
+                  <span className="day-number">{dayIndex + 1}</span>
+                </div>
+                <div className="meals-container">
+                  {dayMeals.map(({ meal, plannedMeal }, mealIndex) => {
+                    const uniqueKey = `${day}-${meal}-${mealIndex}`;
                     return (
-                      <div key={dayIndex} className="table-cell">
+                      <div key={uniqueKey} className="meal-card">
+                        <div className="meal-type">{meal}</div>
                         <div
-                          className="meal-slot"
-                          onClick={() => handleMealSlotClick(day, meal)}
+                          className="meal-content"
+                          onClick={() => !plannedMeal && handleMealSlotClick(day, meal)}
                         >
                           {plannedMeal ? (
-                            <div className="planned-meal">
-                              <div className="meal-name">{plannedMeal.recipe.title}</div>
+                            <div className="meal-recipe">
+                              <div className="recipe-info">
+                                <div className="recipe-title">
+                                  {plannedMeal.recipe?.title || `Recipe ${plannedMeal.recipeId}`}
+                                </div>
+                                {plannedMeal.recipe?.ingredients && (
+                                  <div className="recipe-ingredients">
+                                    {plannedMeal.recipe.ingredients.length} ingredients
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                className="remove-meal-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveMeal(e, plannedMeal);
+                                }}
+                                disabled={isRemovingMeal === plannedMeal.id}
+                                title="Remove recipe"
+                              >
+                                {isRemovingMeal === plannedMeal.id ? '...' : '×'}
+                              </button>
                             </div>
                           ) : (
-                            <div className="empty-meal-slot">+ Add Meal</div>
+                            <div className="meal-empty">
+                              <span className="add-icon">+</span>
+                              <span className="add-text">Add Recipe</span>
+                            </div>
                           )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Recipe Selection Modal */}
       <Modal
         isOpen={isRecipeModalOpen}
         onClose={() => setIsRecipeModalOpen(false)}
