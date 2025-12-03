@@ -2,9 +2,10 @@ import { useState, useMemo } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
 import ConfirmModal from '../components/ConfirmModal';
+import AlertModal from '../components/AlertModal';
 import { useAuth } from '../context/AuthContext';
 import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks';
-import { aiAPI, n8nAPI } from '../services';
+import { aiAPI } from '../services';
 import type { Expense } from '../types';
 import './BudgetPage.css';
 
@@ -40,172 +41,143 @@ const BudgetPage = () => {
     store: '',
   });
 
-  // AI and n8n button states
+  // AI button state
   const [isAIGenerating, setIsAIGenerating] = useState(false);
-  const [isN8nSending, setIsN8nSending] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState('');
-  const [senderEmail, setSenderEmail] = useState(user?.email || '');
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [selectedChannels, setSelectedChannels] = useState<('email' | 'telegram' | 'slack')[]>(['email']);
+  
+  // Alert and confirm modals
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+  const [confirmAIGenerate, setConfirmAIGenerate] = useState(false);
 
-  const handleAIGenerate = async () => {
+  const handleAIGenerate = () => {
     if (!householdId) {
-      alert('Please create or join a household first');
+      setAlertModal({
+        isOpen: true,
+        title: 'Household Required',
+        message: 'Please create or join a household first',
+        type: 'warning',
+      });
       return;
     }
+    setConfirmAIGenerate(true);
+  };
 
-    if (!confirm('This will generate AI-powered sample data (ingredients with nutrition, recipes, pantry items). Continue?')) {
-      return;
-    }
-
+  const handleConfirmAIGenerate = async () => {
+    setConfirmAIGenerate(false);
     setIsAIGenerating(true);
     try {
       const result = await aiAPI.generateSeedData();
-      alert(`✅ Success! Created: ${result.created.ingredients} ingredients, ${result.created.recipes} recipes, ${result.created.pantry_items} pantry items`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Success!',
+        message: `✅ Created: ${result.created.ingredients} ingredients, ${result.created.recipes} recipes, ${result.created.pantry_items} pantry items`,
+        type: 'success',
+      });
     } catch (error) {
       console.error('Failed to generate AI data:', error);
-      alert('Failed to generate seed data. Please check your OpenAI API key in the backend .env file.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to generate seed data. Please check your OpenAI API key in the backend .env file.',
+        type: 'error',
+      });
     } finally {
       setIsAIGenerating(false);
     }
   };
 
-  const handleN8nNotification = () => {
-    if (!householdId) {
-      alert('Please create or join a household first');
-      return;
-    }
-    setNotificationMessage('');
-    setSenderEmail(user?.email || '');
-    setSelectedChannels(['email']);
-    setShowNotificationModal(true);
-  };
-
-  const handleSendNotification = async () => {
-    if (!householdId) return;
-
-    if (!notificationMessage.trim()) {
-      alert('Please enter a message');
-      return;
-    }
-
-    if (selectedChannels.length === 0) {
-      alert('Please select at least one notification channel');
-      return;
-    }
-
-    if (!senderEmail.trim() || !senderEmail.includes('@')) {
-      alert('Please enter a valid sender email address');
-      return;
-    }
-
-    setIsN8nSending(true);
-    try {
-      const result = await n8nAPI.sendNotification(householdId, {
-        channels: selectedChannels,
-        message: notificationMessage,
-        subject: 'HomeLife Notification',
-        senderEmail: senderEmail.trim(),
-      });
-      
-      alert(`✅ ${result.message || 'Notification sent successfully!'}`);
-      setShowNotificationModal(false);
-      setNotificationMessage('');
-    } catch (error) {
-      console.error('Failed to send notification:', error);
-      alert(`Failed to send notification: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsN8nSending(false);
-    }
-  };
 
   // Calculate stats dynamically from expenses
   const stats = useMemo(() => {
     if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
-      return { thisWeek: 0, thisMonth: 0, averagePerWeek: 0 };
+      return { today: 0, thisMonth: 0, averagePerWeek: 0 };
     }
 
     try {
       const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay());
+      // Get today's date in local timezone (YYYY-MM-DD format for comparison)
+      // Use local date components instead of ISO string to avoid timezone issues
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
       
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const todayDate = new Date(year, now.getMonth(), now.getDate());
+      todayDate.setHours(0, 0, 0, 0);
+      
+      // Get first day of current month
+      const monthStart = new Date(year, now.getMonth(), 1);
+      monthStart.setHours(0, 0, 0, 0);
+      
+      // Get last day of current month
+      const monthEnd = new Date(year, now.getMonth() + 1, 0);
+      monthEnd.setHours(23, 59, 59, 999);
 
-      const thisWeek = expenses
+      // Helper function to parse expense date string to Date object
+      const parseExpenseDate = (dateStr: string): Date | null => {
+        if (!dateStr) return null;
+        try {
+          // Handle both "YYYY-MM-DD" and "YYYY-MM-DDTHH:mm:ss" formats
+          const dateOnly = dateStr.split('T')[0];
+          const parts = dateOnly.split('-');
+          if (parts.length !== 3) return null;
+          
+          const year = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+          const day = parseInt(parts[2], 10);
+          
+          const date = new Date(year, month, day);
+          date.setHours(0, 0, 0, 0);
+          
+          if (isNaN(date.getTime())) return null;
+          return date;
+        } catch {
+          return null;
+        }
+      };
+
+      // Calculate today's expenses - compare date strings to avoid timezone issues
+      const todayExpenses = expenses
         .filter((e) => {
           if (!e || !e.date) return false;
           if (e.amount === undefined || e.amount === null) return false;
-          try {
-            // Parse date string (format: YYYY-MM-DD) to avoid timezone issues
-            const dateParts = e.date.split('T')[0].split('-');
-            if (dateParts.length !== 3) return false;
-            const expenseDateOnly = new Date(
-              parseInt(dateParts[0], 10),
-              parseInt(dateParts[1], 10) - 1,
-              parseInt(dateParts[2], 10)
-            );
-            if (isNaN(expenseDateOnly.getTime())) return false;
-            // Include expenses from Sunday of this week up to and including today
-            return expenseDateOnly >= weekStart && expenseDateOnly <= today;
-          } catch {
-            return false;
-          }
+          
+          const expenseDateStr = e.date.split('T')[0];
+          return expenseDateStr === todayStr;
         })
         .reduce((sum, e) => {
-          let amount = 0;
-          if (typeof e.amount === 'number') {
-            amount = e.amount;
-          } else if (e.amount != null && e.amount !== '') {
-            const parsed = parseFloat(String(e.amount));
-            if (!isNaN(parsed)) {
-              amount = parsed;
-            }
-          }
+          const amount = typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount)) || 0;
           return sum + amount;
         }, 0);
 
+      // Calculate this month's expenses - include all expenses in the current month (including future dates)
       const thisMonth = expenses
         .filter((e) => {
           if (!e || !e.date) return false;
           if (e.amount === undefined || e.amount === null) return false;
-          try {
-            // Parse date string (format: YYYY-MM-DD) to avoid timezone issues
-            const dateParts = e.date.split('T')[0].split('-');
-            if (dateParts.length !== 3) return false;
-            const expenseDateOnly = new Date(
-              parseInt(dateParts[0], 10),
-              parseInt(dateParts[1], 10) - 1,
-              parseInt(dateParts[2], 10)
-            );
-            if (isNaN(expenseDateOnly.getTime())) return false;
-            // Include expenses from first day of month up to and including today
-            return expenseDateOnly >= monthStart && expenseDateOnly <= today;
-          } catch {
-            return false;
-          }
+          
+          const expenseDate = parseExpenseDate(e.date);
+          if (!expenseDate) return false;
+          
+          // Include all expenses from month start to month end (including future dates in the month)
+          return expenseDate >= monthStart && expenseDate <= monthEnd;
         })
         .reduce((sum, e) => {
-          let amount = 0;
-          if (typeof e.amount === 'number') {
-            amount = e.amount;
-          } else if (e.amount != null && e.amount !== '') {
-            const parsed = parseFloat(String(e.amount));
-            if (!isNaN(parsed)) {
-              amount = parsed;
-            }
-          }
+          const amount = typeof e.amount === 'number' ? e.amount : parseFloat(String(e.amount)) || 0;
           return sum + amount;
         }, 0);
 
-      // Calculate average per week: total expenses in current month / number of weeks passed
-      const weeksInMonth = Math.ceil((now.getDate() + monthStart.getDay()) / 7);
-      const averagePerWeek = weeksInMonth > 0 ? thisMonth / weeksInMonth : 0;
+      // Calculate average per week: total month expenses / 4 (assuming 4 weeks per month)
+      const averagePerWeek = thisMonth / 4;
 
-      return { thisWeek, thisMonth, averagePerWeek };
-    } catch {
-      return { thisWeek: 0, thisMonth: 0, averagePerWeek: 0 };
+      return { today: todayExpenses, thisMonth, averagePerWeek };
+    } catch (error) {
+      console.error('Error calculating stats:', error);
+      return { today: 0, thisMonth: 0, averagePerWeek: 0 };
     }
   }, [expenses]);
 
@@ -376,10 +348,13 @@ const BudgetPage = () => {
       <DashboardNav />
       <div className="budget-content">
         <div className="budget-header">
-          <h1 className="page-title">Budget & Expenses</h1>
+          <div className="header-content">
+            <h1 className="page-title">Budget & Expenses</h1>
+            <p className="page-subtitle">Track and manage your household spending</p>
+          </div>
           <div className="budget-action-buttons">
             <button className="add-expense-btn" onClick={handleAddExpense}>
-              +Add Expense
+              Add Expense
             </button>
             <button 
               className="ai-button" 
@@ -387,23 +362,15 @@ const BudgetPage = () => {
               disabled={isAIGenerating}
               title="Generate AI-powered sample data"
             >
-              {isAIGenerating ? '🤖 Generating...' : '🤖 AI Generate'}
-            </button>
-            <button 
-              className="n8n-button" 
-              onClick={handleN8nNotification}
-              disabled={isN8nSending}
-              title="Send notification via email/telegram/slack"
-            >
-              {isN8nSending ? '📧 Sending...' : '📧 Send Notification'}
+              {isAIGenerating ? 'Generating...' : 'AI Generate'}
             </button>
           </div>
         </div>
 
         <div className="stats-cards">
           <div className="stat-card">
-            <h3 className="stat-label">Todays Expenses</h3>
-            <p className="stat-value">${stats.thisWeek.toFixed(2)}</p>
+            <h3 className="stat-label">Today's Expenses</h3>
+            <p className="stat-value">${stats.today.toFixed(2)}</p>
           </div>
           <div className="stat-card">
             <h3 className="stat-label">This Month</h3>
@@ -621,105 +588,23 @@ const BudgetPage = () => {
         cancelText="Cancel"
       />
 
-      {/* Notification Modal */}
-      <Modal
-        isOpen={showNotificationModal}
-        onClose={() => {
-          setShowNotificationModal(false);
-          setNotificationMessage('');
-        }}
-        title="Send Notification"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendNotification();
-          }}
-          className="expense-form"
-        >
-          <div className="form-group">
-            <label>Sender Email</label>
-            <input
-              type="email"
-              value={senderEmail}
-              onChange={(e) => setSenderEmail(e.target.value)}
-              placeholder="your-email@example.com"
-              required
-            />
-          </div>
-          <div className="form-group">
-            <label>Notification Channels</label>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedChannels.includes('email')}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedChannels([...selectedChannels, 'email']);
-                    } else {
-                      setSelectedChannels(selectedChannels.filter((c) => c !== 'email'));
-                    }
-                  }}
-                />
-                <span>📧 Email</span>
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedChannels.includes('telegram')}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedChannels([...selectedChannels, 'telegram']);
-                    } else {
-                      setSelectedChannels(selectedChannels.filter((c) => c !== 'telegram'));
-                    }
-                  }}
-                />
-                <span>💬 Telegram</span>
-              </label>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedChannels.includes('slack')}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedChannels([...selectedChannels, 'slack']);
-                    } else {
-                      setSelectedChannels(selectedChannels.filter((c) => c !== 'slack'));
-                    }
-                  }}
-                />
-                <span>💼 Slack</span>
-              </label>
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Message</label>
-            <textarea
-              value={notificationMessage}
-              onChange={(e) => setNotificationMessage(e.target.value)}
-              placeholder="Enter your notification message..."
-              rows={5}
-              required
-            />
-          </div>
-          <div className="form-actions">
-            <button
-              type="button"
-              onClick={() => {
-                setShowNotificationModal(false);
-                setNotificationMessage('');
-              }}
-            >
-              Cancel
-            </button>
-            <button type="submit" disabled={isN8nSending || selectedChannels.length === 0}>
-              {isN8nSending ? 'Sending...' : 'Send Notification'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <ConfirmModal
+        isOpen={confirmAIGenerate}
+        onClose={() => setConfirmAIGenerate(false)}
+        onConfirm={handleConfirmAIGenerate}
+        title="Generate AI Data"
+        message="This will generate AI-powered sample data (ingredients with nutrition, recipes, pantry items). Continue?"
+        confirmText="Continue"
+        cancelText="Cancel"
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 };

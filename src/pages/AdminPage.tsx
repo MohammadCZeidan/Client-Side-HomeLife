@@ -3,6 +3,7 @@ import DashboardNav from '../components/DashboardNav';
 import { useAdmin } from '../hooks/useAdmin';
 import { useAuth } from '../context/AuthContext';
 import { adminAPI, type AdminUser } from '../services';
+import AlertModal from '../components/AlertModal';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -21,6 +22,12 @@ const AdminPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'member'>('all');
   const [filterHousehold, setFilterHousehold] = useState<'all' | 'with' | 'without'>('all');
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; type?: 'success' | 'error' | 'info' | 'warning' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'error',
+  });
 
   useEffect(() => {
     if (isAdmin) {
@@ -40,7 +47,12 @@ const AdminPage = () => {
       console.error('Failed to load users:', err);
       const errorMsg = err instanceof Error ? err.message : 'Failed to load users';
       setError(errorMsg);
-      alert(`Error loading users: ${errorMsg}\n\nCheck console for details.`);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error Loading Users',
+        message: `${errorMsg}\n\nCheck console for details.`,
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -52,22 +64,22 @@ const AdminPage = () => {
       setHouseholds(allHouseholds);
     } catch (err) {
       console.error('Failed to load households:', err);
-      // Don't set error for households, just log it
+      // Don't show error to user for households, just log it
     }
   };
 
-  // Filter users based on search and filters
+  // Filter users by search term and selected filters
   const filteredUsers = users.filter((user) => {
-    // Search filter
+    // Check if matches search (name, email, or household name)
     const matchesSearch = 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.householdName && user.householdName.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    // Role filter
+    // Check role filter
     const matchesRole = filterRole === 'all' || user.role === filterRole;
 
-    // Household filter
+    // Check household filter (with/without household)
     const matchesHousehold = 
       filterHousehold === 'all' ||
       (filterHousehold === 'with' && user.householdId !== null) ||
@@ -76,7 +88,7 @@ const AdminPage = () => {
     return matchesSearch && matchesRole && matchesHousehold;
   });
 
-  // Group users by household for display
+  // Group filtered users by household for display
   const usersByHousehold = filteredUsers.reduce((acc, user) => {
     const key = user.householdId || 'no-household';
     if (!acc[key]) {
@@ -338,6 +350,14 @@ const AdminPage = () => {
           )}
         </div>
       </div>
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </div>
   );
 };

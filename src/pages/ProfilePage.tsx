@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
 import { useAdmin } from '../hooks/useAdmin';
 import { householdAPI } from '../services';
@@ -20,6 +21,8 @@ const ProfilePage = () => {
   const [inviteCode, setInviteCode] = useState<string>('');
   const [householdData, setHouseholdData] = useState<Household | null>(null);
   const [loadingInviteCode, setLoadingInviteCode] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -126,10 +129,17 @@ const ProfilePage = () => {
     });
   };
 
-  const handleRemoveMember = async (memberId: string, memberName: string) => {
-    if (confirm(`Are you sure you want to remove ${memberName}?`)) {
+  const handleRemoveMember = (memberId: string, memberName: string) => {
+    setMemberToRemove({ id: memberId, name: memberName });
+    setShowRemoveConfirm(true);
+  };
+
+  const handleConfirmRemove = async () => {
+    if (memberToRemove) {
       // TODO: Implement remove member API call when backend endpoint is available
       console.log(`Remove member functionality will be implemented when the backend endpoint is available.`);
+      setShowRemoveConfirm(false);
+      setMemberToRemove(null);
     }
   };
 
@@ -288,6 +298,19 @@ const ProfilePage = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={showRemoveConfirm}
+        onClose={() => {
+          setShowRemoveConfirm(false);
+          setMemberToRemove(null);
+        }}
+        onConfirm={handleConfirmRemove}
+        title="Remove Member"
+        message={memberToRemove ? `Are you sure you want to remove ${memberToRemove.name}?` : ''}
+        confirmText="Remove"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

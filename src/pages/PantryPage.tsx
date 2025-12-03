@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { pantryAPI } from '../services';
@@ -34,11 +35,11 @@ const PantryPage = () => {
   }, [householdId, refreshPantry]);
 
   const filteredItems = filterExpiring
-    ? pantryItems.filter((item) => {
+    ? (pantryItems || []).filter((item) => {
         const days = getDaysUntilExpiry(item.expiryDate);
         return days >= 0 && days <= 7;
       })
-    : pantryItems;
+    : (pantryItems || []);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,11 +49,33 @@ const PantryPage = () => {
     }
     
     try {
-      await pantryAPI.create({
-        ...formData,
-        quantity: parseFloat(formData.quantity),
-        householdId,
-      });
+      const ingredientName = formData.ingredient.trim();
+      const quantityToAdd = parseFloat(formData.quantity);
+      
+      // Check if ingredient already exists in pantry (by name only, case-insensitive)
+      const existingPantryItem = (pantryItems || []).find(
+        (pantryItem) => 
+          pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase()
+      );
+      
+      if (existingPantryItem) {
+        // If ingredient exists, add quantity to existing item
+        const newQuantity = existingPantryItem.quantity + quantityToAdd;
+        await pantryAPI.update(existingPantryItem.id, {
+          quantity: newQuantity,
+          householdId,
+        });
+        console.log(`Updated "${ingredientName}" in pantry: ${existingPantryItem.quantity} + ${quantityToAdd} = ${newQuantity}`);
+      } else {
+        // If ingredient doesn't exist, create new pantry item
+        await pantryAPI.create({
+          ...formData,
+          quantity: quantityToAdd,
+          householdId,
+        });
+        console.log(`Added "${ingredientName}" to pantry`);
+      }
+      
       await refreshPantry();
       setIsAddModalOpen(false);
       setFormData({
@@ -102,15 +125,25 @@ const PantryPage = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; itemId: string | null }>({
+    isOpen: false,
+    itemId: null,
+  });
+
+  const handleDelete = (id: string) => {
     if (!householdId) {
       console.log('Missing household ID');
       return;
     }
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    setDeleteConfirm({ isOpen: true, itemId: id });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.itemId || !householdId) return;
     try {
-      await pantryAPI.delete(id, householdId);
+      await pantryAPI.delete(deleteConfirm.itemId, householdId);
       await refreshPantry();
+      setDeleteConfirm({ isOpen: false, itemId: null });
       console.log('Item deleted successfully!');
     } catch (error) {
       console.error('Failed to delete item:', error);
@@ -184,7 +217,10 @@ const PantryPage = () => {
       <DashboardNav />
       <div className="pantry-content">
         <div className="pantry-header">
-          <h1 className="page-title">Pantry</h1>
+          <div className="header-content">
+            <h1 className="page-title">Storage Management</h1>
+            <p className="page-subtitle">Track and manage your household inventory</p>
+          </div>
           <div className="pantry-actions">
             <label className="filter-toggle">
               <input
@@ -192,10 +228,10 @@ const PantryPage = () => {
                 checked={filterExpiring}
                 onChange={(e) => setFilterExpiring(e.target.checked)}
               />
-              Show expiring soon (7 days)
+              Expiring Soon (7 days)
             </label>
             <button className="add-items-btn" onClick={() => setIsAddModalOpen(true)}>
-              Add Items
+              Add Item
             </button>
           </div>
         </div>
@@ -459,6 +495,16 @@ const PantryPage = () => {
             </div>
           </form>
         </Modal>
+
+        <ConfirmModal
+          isOpen={deleteConfirm.isOpen}
+          onClose={() => setDeleteConfirm({ isOpen: false, itemId: null })}
+          onConfirm={handleConfirmDelete}
+          title="Delete Item"
+          message="Are you sure you want to delete this item?"
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
       </div>
     </div>
   );

@@ -2,13 +2,13 @@
 
 :root {
   /* Colors */
-  --primary: #11A84B;
-  --primary-dark: #0d8a3d;
-  --primary-light: #82DF9B;
-  --primary-lighter: #b8f0d0;
+  --primary: #AC7F5E;
+  --primary-dark: #8B6B4A;
+  --primary-light: #D4B59A;
+  --primary-lighter: #E5D4C4;
   
-  --secondary: #348048;
-  --secondary-dark: #2a6a3a;
+  --secondary: #AC7F5E;
+  --secondary-dark: #8B6B4A;
   
   --accent: #EBB783;
   --accent-dark: #d4a066;
@@ -42,7 +42,7 @@
   
   /* Background Colors */
   --bg-primary: #FFFFFF;
-  --bg-secondary: #F9FAFB;
+  --bg-secondary: #F5F0EB;
   --bg-tertiary: #F3F4F6;
   
   /* Borders */
@@ -297,7 +297,7 @@ p {
 .form-textarea:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(17, 168, 75, 0.1);
+  box-shadow: 0 0 0 3px rgba(172, 127, 94, 0.1);
 }
 
 .form-input::placeholder {

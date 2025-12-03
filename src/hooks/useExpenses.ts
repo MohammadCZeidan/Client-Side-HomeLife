@@ -8,7 +8,7 @@ export const useExpenses = (householdId: string) => {
   return useQuery({
     queryKey: queryKeys.expenses.list(householdId),
     queryFn: () => budgetAPI.getAll(householdId),
-    enabled: !!householdId,
+      
     staleTime: 30000, // 30 seconds
   });
 };
@@ -43,7 +43,7 @@ export const useUpdateExpense = (householdId: string) => {
   
   return useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Expense> }) =>
-      budgetAPI.update(id, updates),
+      budgetAPI.update(id, updates, householdId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.list(householdId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.summary(householdId) });

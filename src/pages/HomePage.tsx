@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Clock, CreditCard, Package, ShoppingCart } from 'lucide-react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
@@ -133,12 +134,14 @@ const HomePage = () => {
               }
             }}
           >
-            <div className="stat-icon">🥛</div>
-            <div className="stat-info">
-              <div className="stat-value">{expiringItems.length}</div>
-              <div className="stat-label">Items</div>
-              <div className="stat-sub-label">Expiring Soon</div>
+            <div className="stat-label-wrapper">
+              <div className="stat-icon">
+                <Clock size={18} strokeWidth={2} />
+              </div>
+              <div className="stat-label">Expiring Soon</div>
             </div>
+            <div className="stat-divider"></div>
+            <div className="stat-value">{expiringItems.length}</div>
           </div>
           <div 
             className="stat-card clickable" 
@@ -152,12 +155,14 @@ const HomePage = () => {
               }
             }}
           >
-            <div className="stat-icon">💰</div>
-            <div className="stat-info">
-              <div className="stat-value">${thisWeekExpenses.toFixed(2)}</div>
-              <div className="stat-label">Spent</div>
-              <div className="stat-sub-label">This Week</div>
+            <div className="stat-label-wrapper">
+              <div className="stat-icon">
+                <CreditCard size={18} strokeWidth={2} />
+              </div>
+              <div className="stat-label">Spent This Week</div>
             </div>
+            <div className="stat-divider"></div>
+            <div className="stat-value">${thisWeekExpenses.toFixed(2)}</div>
           </div>
           <div 
             className="stat-card clickable" 
@@ -171,12 +176,14 @@ const HomePage = () => {
               }
             }}
           >
-            <div className="stat-icon">🍽️</div>
-            <div className="stat-info">
-              <div className="stat-value">{pantryItems?.length || 0}</div>
-              <div className="stat-label">Items</div>
-              <div className="stat-sub-label">In Pantry</div>
+            <div className="stat-label-wrapper">
+              <div className="stat-icon">
+                <Package size={18} strokeWidth={2} />
+              </div>
+              <div className="stat-label">In Pantry</div>
             </div>
+            <div className="stat-divider"></div>
+            <div className="stat-value">{pantryItems?.length || 0}</div>
           </div>
           <div 
             className="stat-card clickable" 
@@ -190,26 +197,40 @@ const HomePage = () => {
               }
             }}
           >
-            <div className="stat-icon">🛒</div>
-            <div className="stat-info">
-              <div className="stat-value">{totalShoppingItems}</div>
-              <div className="stat-label">Items</div>
-              <div className="stat-sub-label">In Groceries</div>
+            <div className="stat-label-wrapper">
+              <div className="stat-icon">
+                <ShoppingCart size={18} strokeWidth={2} />
+              </div>
+              <div className="stat-label">In Groceries</div>
             </div>
+            <div className="stat-divider"></div>
+            <div className="stat-value">{totalShoppingItems}</div>
           </div>
         </div>
 
         <div className="quick-actions-section">
-          <h2 className="section-title">Quick Action</h2>
+          <div className="section-header">
+            <h2 className="section-title">Quick Bar</h2>
+            <p className="section-subtitle">Manage your household efficiently</p>
+          </div>
           <div className="action-buttons">
             <button className="action-btn" onClick={() => navigate('/pantry')}>
-              Add Items
+              <span className="action-btn-icon">
+                <Package size={24} strokeWidth={2} />
+              </span>
+              <span className="action-btn-text">Add Items</span>
             </button>
             <button className="action-btn" onClick={() => navigate('/recipes')}>
-              Create meal
+              <span className="action-btn-icon">
+                <Clock size={24} strokeWidth={2} />
+              </span>
+              <span className="action-btn-text">Create Meal</span>
             </button>
             <button className="action-btn" onClick={() => navigate('/shopping')}>
-              Create List
+              <span className="action-btn-icon">
+                <ShoppingCart size={24} strokeWidth={2} />
+              </span>
+              <span className="action-btn-text">Create List</span>
             </button>
           </div>
         </div>

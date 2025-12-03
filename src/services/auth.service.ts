@@ -1,11 +1,15 @@
+// TypeScript type for User data structure
 import type { User } from '../types';
+// API call utility and base URL constant
 import { apiCall, API_BASE_URL } from './apiCall';
+// Axios for direct HTTP requests (needed for login/register without auth token)
 import axios, { AxiosError } from 'axios';
 
+// Authentication API service - handles all user authentication operations
 export const authAPI = {
   login: async (email: string, password: string): Promise<{ user: User; token: string }> => {
     try {
-      // Make login request without Authorization header (public endpoint)
+      // Login endpoint is public, so don't send auth header
       const response = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
@@ -34,7 +38,7 @@ export const authAPI = {
         token = data.access_token;
         userData = data.user || data.data?.user;
       } else if (data.token) {
-        // Direct token format
+        // Simple token format
         token = data.token;
         userData = data.user || data.data?.user;
       } else if (data.data) {
@@ -49,7 +53,8 @@ export const authAPI = {
         throw new Error('Token or user data missing from login response');
       }
 
-      // Extract role from nested structure: role: { id: 1, role: "admin" } or role: "admin"
+      // Backend sometimes sends role as an object { id: 1, role: "admin" }
+      // Sometimes as a string "admin" - handle both
       let roleValue: 'admin' | 'member' = 'member';
       if (userData.role) {
         if (typeof userData.role === 'string') {
@@ -59,7 +64,7 @@ export const authAPI = {
         }
       }
 
-      // Transform user data to User type
+      // Convert to my frontend User type
       const user: User = {
         id: String(userData.id),
         email: userData.email,
@@ -71,7 +76,7 @@ export const authAPI = {
       console.log('Login - Extracted user:', user);
       console.log('Login - Role extracted:', roleValue, 'from:', userData.role);
 
-      // Store token
+      // Save token for future requests
       localStorage.setItem('auth_token', token);
       
       return { user, token };
@@ -82,7 +87,7 @@ export const authAPI = {
           errors?: Record<string, string[]>;
         }>;
         
-        // Handle Laravel validation errors
+        // Show validation errors if they exist
         const errorMessage = axiosError.response?.data?.message || 
                             (axiosError.response?.data?.errors && 
                              Object.values(axiosError.response.data.errors).flat().join(', ')) ||
@@ -95,14 +100,14 @@ export const authAPI = {
 
   register: async (email: string, password: string, name: string): Promise<{ user: User; token: string }> => {
     try {
-      // Make register request without Authorization header (public endpoint)
-      // Note: Backend should set new users as 'member' role by default (not admin)
-      // Frontend does NOT send role - backend handles default role assignment
+      // Public endpoint - no auth header needed
+      // IMPORTANT: Don't send role - backend should default new users to 'member'
+      // Only admins should be able to change roles
       const response = await axios.post(`${API_BASE_URL}/auth/register`, {
         email,
         password,
         name,
-        // Explicitly do NOT send role - backend should default to 'member'
+        // Not sending role - backend handles default
       }, {
         headers: {
           'Content-Type': 'application/json',
@@ -140,8 +145,7 @@ export const authAPI = {
         throw new Error('Token or user data missing from register response');
       }
 
-      // Extract role from nested structure: role: { id: 1, role: "admin" } or role: "admin"
-      // All new registrations should be 'member' by default (not admin)
+      // Extract role - should be 'member' for new users
       let roleValue: 'admin' | 'member' = 'member';
       if (userData.role) {
         if (typeof userData.role === 'string') {
@@ -151,7 +155,6 @@ export const authAPI = {
         }
       }
 
-      // Ensure user role defaults to 'member' if not provided or invalid
       const user: User = {
         id: String(userData.id),
         email: userData.email,
@@ -160,7 +163,6 @@ export const authAPI = {
         householdId: userData.household_id ? String(userData.household_id) : null,
       };
 
-      // Store token
       localStorage.setItem('auth_token', token);
       
       return { user, token };
@@ -205,7 +207,7 @@ export const authAPI = {
     console.log('getMe - Response role value:', response.role);
     console.log('getMe - Response role type:', typeof response.role);
     
-    // Extract role from nested structure: role: { id: 1, role: "admin" } or role: "admin"
+    // Extract role - handle both object and string formats
     let roleValue: 'admin' | 'member' = 'member';
     if (response.role) {
       if (typeof response.role === 'string') {
@@ -232,7 +234,7 @@ export const authAPI = {
 
   refreshToken: async (): Promise<{ token: string }> => {
     try {
-      // Refresh endpoint might return payload wrapper, so we handle it manually
+      // Handle token refresh manually since it might have payload wrapper
       const token = localStorage.getItem('auth_token');
       const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, {
         headers: {
@@ -243,7 +245,7 @@ export const authAPI = {
 
       const data = response.data;
     
-      // Handle different token response formats
+      // Extract token from various possible formats
       let newToken: string;
       if (data.payload) {
         newToken = data.payload.token || data.payload.access_token;
@@ -267,8 +269,7 @@ export const authAPI = {
   },
 
   updateProfile: async (_userId: string, updates: { email?: string; name?: string }): Promise<User> => {
-    // Update profile using /auth/profile/update endpoint
-    // Backend expects email and name in the request body
+    // Update user profile - backend expects email and name
     const response = await apiCall<{
       id: number | string;
       email: string;
@@ -280,7 +281,7 @@ export const authAPI = {
       body: JSON.stringify(updates),
     });
     
-    // Transform backend response to frontend format
+    // Convert backend format to frontend format
     return {
       id: String(response.id),
       email: response.email,

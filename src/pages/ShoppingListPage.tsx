@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import DashboardNav from '../components/DashboardNav';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
+import AlertModal from '../components/AlertModal';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { shoppingListAPI, mealPlanAPI, pantryAPI } from '../services';
@@ -22,6 +24,14 @@ const ShoppingListPage = () => {
     name: '',
     quantity: '',
     unit: 'g',
+  });
+  const [deleteItemConfirm, setDeleteItemConfirm] = useState<{ isOpen: boolean; itemId: string | null }>({
+    isOpen: false,
+    itemId: null,
+  });
+  const [deleteListConfirm, setDeleteListConfirm] = useState<{ isOpen: boolean; list: ShoppingList | null }>({
+    isOpen: false,
+    list: null,
   });
 
   const householdId = household?.id || user?.householdId || '';
@@ -188,11 +198,10 @@ const ShoppingListPage = () => {
           
           // Only add to pantry if we have valid quantity
           if (quantity > 0 && ingredientName) {
-            // Check if ingredient already exists in pantry (by name and unit)
+            // Check if ingredient already exists in pantry (by name only, case-insensitive)
             const existingPantryItem = pantryItems?.find(
               (pantryItem) => 
-                pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase() &&
-                pantryItem.unit.toLowerCase() === unit.toLowerCase()
+                pantryItem.ingredient.toLowerCase() === ingredientName.toLowerCase()
             );
             
             if (existingPantryItem) {
@@ -200,6 +209,7 @@ const ShoppingListPage = () => {
               const newQuantity = existingPantryItem.quantity + quantity;
               await pantryAPI.update(existingPantryItem.id, {
                 quantity: newQuantity,
+                householdId: householdId,
               });
               console.log(`Updated "${ingredientName}" in pantry: ${existingPantryItem.quantity} + ${quantity} = ${newQuantity}`);
             } else {
@@ -282,41 +292,47 @@ const ShoppingListPage = () => {
     }
   };
 
-  const handleDeleteItem = async (itemId: string) => {
+  const handleDeleteItem = (itemId: string) => {
     if (!selectedList || !householdId) return;
+    setDeleteItemConfirm({ isOpen: true, itemId });
+  };
 
-    if (confirm('Are you sure you want to remove this item?')) {
-      try {
-        const updatedItems = selectedList.items.filter((i) => i.id !== itemId);
-        const updatedList = await shoppingListAPI.update(
-          selectedList.id,
-          { items: updatedItems },
-          householdId
-        );
-        setSelectedList(updatedList);
-        await refreshShoppingLists();
-      } catch (error) {
-        console.error('Failed to delete item:', error);
-        console.log('Failed to delete item. Please try again.');
-      }
+  const handleConfirmDeleteItem = async () => {
+    if (!deleteItemConfirm.itemId || !selectedList || !householdId) return;
+    try {
+      const updatedItems = selectedList.items.filter((i) => i.id !== deleteItemConfirm.itemId);
+      const updatedList = await shoppingListAPI.update(
+        selectedList.id,
+        { items: updatedItems },
+        householdId
+      );
+      setSelectedList(updatedList);
+      await refreshShoppingLists();
+      setDeleteItemConfirm({ isOpen: false, itemId: null });
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      console.log('Failed to delete item. Please try again.');
     }
   };
 
-  const handleDeleteList = async (list: ShoppingList) => {
+  const handleDeleteList = (list: ShoppingList) => {
     if (!householdId) return;
+    setDeleteListConfirm({ isOpen: true, list });
+  };
 
-    if (confirm(`Are you sure you want to delete "${list.name}"?`)) {
-      try {
-        await shoppingListAPI.delete(list.id, householdId);
-        await refreshShoppingLists();
-        if (selectedList?.id === list.id) {
-          const updatedLists = await shoppingListAPI.getAll(householdId);
-          setSelectedList(updatedLists.length > 0 ? updatedLists[0] : null);
-        }
-      } catch (error) {
-        console.error('Failed to delete list:', error);
-        console.log('Failed to delete list. Please try again.');
+  const handleConfirmDeleteList = async () => {
+    if (!deleteListConfirm.list || !householdId) return;
+    try {
+      await shoppingListAPI.delete(deleteListConfirm.list.id, householdId);
+      await refreshShoppingLists();
+      if (selectedList?.id === deleteListConfirm.list.id) {
+        const updatedLists = await shoppingListAPI.getAll(householdId);
+        setSelectedList(updatedLists.length > 0 ? updatedLists[0] : null);
       }
+      setDeleteListConfirm({ isOpen: false, list: null });
+    } catch (error) {
+      console.error('Failed to delete list:', error);
+      console.log('Failed to delete list. Please try again.');
     }
   };
 
@@ -327,92 +343,112 @@ const ShoppingListPage = () => {
     <div className="shopping-list-page">
       <DashboardNav />
       <div className="shopping-content">
-        <h1 className="page-title">Shopping Lists</h1>
-        <div className="action-buttons">
-          <button className="generate-btn" onClick={handleGenerateFromMealPlan}>
-            Generate from meal plan
-          </button>
-          <button className="new-list-btn" onClick={handleNewList}>
-            +New List
-          </button>
+        <div className="shopping-header">
+          <div className="header-content">
+            <h1 className="page-title">Grocery Lists</h1>
+            <p className="page-subtitle">Organize and manage your shopping needs</p>
+          </div>
+          <div className="action-buttons">
+            <button className="generate-btn" onClick={handleGenerateFromMealPlan}>
+              Generate from Meal Plan
+            </button>
+            <button className="new-list-btn" onClick={handleNewList}>
+              Create New List
+            </button>
+          </div>
         </div>
 
-        <div className="lists-grid">
-          {shoppingLists && shoppingLists.length > 0 ? (
-            shoppingLists.map((list) => (
-              <div
-                key={list.id}
-                className={`list-card ${selectedList?.id === list.id ? 'active' : ''}`}
-              >
-                <h3 className="list-name">{list.name}</h3>
-                <p className="list-date">Created: {formatDate(list.createdAt)}</p>
-                <p className="list-count">{list.items.length} Items</p>
-                <div className="list-card-actions">
-                  <button className="view-btn" onClick={() => handleViewList(list)}>
-                    View list
-                  </button>
-                  <button
-                    className="delete-list-btn"
-                    onClick={() => handleDeleteList(list)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="empty-state">
-              <p>No shopping lists yet. Create your first list!</p>
-            </div>
-          )}
-        </div>
-
-        {selectedList && (
-          <div className="list-detail">
-            <div className="list-detail-header">
-              <div>
-                <h2 className="detail-title">{selectedList.name}</h2>
-                <p className="list-progress">
-                  {boughtCount} of {totalCount} items bought
-                </p>
-              </div>
-              <button
-                className="add-item-btn"
-                onClick={() => setIsAddItemModalOpen(true)}
-              >
-                + Add Item
-              </button>
-            </div>
-            <div className="items-list">
-              {selectedList.items.length === 0 ? (
-                <div className="empty-items">
-                  <p>No items in this list. Add items to get started!</p>
-                </div>
-              ) : (
-                selectedList.items.map((item) => (
+        <div className="lists-container">
+          <div className="lists-sidebar">
+            <h3 className="sidebar-title">Your Lists</h3>
+            <div className="lists-grid">
+              {shoppingLists && shoppingLists.length > 0 ? (
+                shoppingLists.map((list) => (
                   <div
-                    key={item.id}
-                    className={`list-item ${item.bought ? 'bought' : ''}`}
+                    key={list.id}
+                    className={`list-card ${selectedList?.id === list.id ? 'active' : ''}`}
+                    onClick={() => handleViewList(list)}
                   >
-                    <input
-                      type="checkbox"
-                      className="item-checkbox"
-                      checked={item.bought}
-                      onChange={() => handleToggleItem(item)}
-                    />
-                    <span className="item-name">{item.name}</span>
+                    <div className="list-card-content">
+                      <h3 className="list-name">{list.name}</h3>
+                      <div className="list-card-meta">
+                        <span className="list-count">{list.items.length} items</span>
+                        <span className="list-date">{formatDate(list.createdAt)}</span>
+                      </div>
+                    </div>
                     <button
-                      className="delete-item-btn"
-                      onClick={() => handleDeleteItem(item.id)}
+                      className="delete-list-btn-small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteList(list);
+                      }}
+                      title="Delete list"
                     >
                       ×
                     </button>
                   </div>
                 ))
+              ) : (
+                <div className="empty-state">
+                  <p>No shopping lists yet. Create your first list!</p>
+                </div>
               )}
             </div>
           </div>
-        )}
+
+          <div className="list-detail-container">
+            {selectedList ? (
+              <div className="list-detail">
+                <div className="list-detail-header">
+                  <div>
+                    <h2 className="detail-title">{selectedList.name}</h2>
+                    <p className="list-progress">
+                      {boughtCount} of {totalCount} items bought
+                    </p>
+                  </div>
+                  <button
+                    className="add-item-btn"
+                    onClick={() => setIsAddItemModalOpen(true)}
+                  >
+                    + Add Item
+                  </button>
+                </div>
+                <div className="items-list">
+                  {selectedList.items.length === 0 ? (
+                    <div className="empty-items">
+                      <p>No items in this list. Add items to get started!</p>
+                    </div>
+                  ) : (
+                    selectedList.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className={`list-item ${item.bought ? 'bought' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="item-checkbox"
+                          checked={item.bought}
+                          onChange={() => handleToggleItem(item)}
+                        />
+                        <span className="item-name">{item.name}</span>
+                        <button
+                          className="delete-item-btn"
+                          onClick={() => handleDeleteItem(item.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="no-list-selected">
+                <p>Select a list from the sidebar to view its items</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* New List Modal */}
@@ -505,6 +541,26 @@ const ShoppingListPage = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteItemConfirm.isOpen}
+        onClose={() => setDeleteItemConfirm({ isOpen: false, itemId: null })}
+        onConfirm={handleConfirmDeleteItem}
+        title="Remove Item"
+        message="Are you sure you want to remove this item?"
+        confirmText="Remove"
+        cancelText="Cancel"
+      />
+
+      <ConfirmModal
+        isOpen={deleteListConfirm.isOpen}
+        onClose={() => setDeleteListConfirm({ isOpen: false, list: null })}
+        onConfirm={handleConfirmDeleteList}
+        title="Delete List"
+        message={deleteListConfirm.list ? `Are you sure you want to delete "${deleteListConfirm.list.name}"?` : ''}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
