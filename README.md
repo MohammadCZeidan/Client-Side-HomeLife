@@ -1,155 +1,194 @@
-# HomeLife - Pantry Management Application
+<img src="./readme/card-titles/title1.svg"/>
+<br>
 
-A modern React + TypeScript application for managing household pantry items, recipes, shopping lists, meal plans, and budget tracking.
+## License
 
-## Tech Stack
+This project is open source and available for educational use.
 
-- **React 18** with TypeScript
-- **Vite** for build tooling and HMR
-- **React Router** for navigation
-- **React Query** for data fetching and caching
-- **CSS Modules** for styling
+<br><br>
+<!-- project overview -->
+<img src="./readme/card-titles/title2.svg"/>
 
-## Project Structure
+> Client-Side HomeLife is a React + TypeScript frontend for managing household food, recipes, shopping, meal plans, budgets, and user accounts.<br>
+> It connects to a Laravel HomeLife API and provides protected household workflows, admin access, reusable modals, service modules, and React Query hooks.
 
-```
-src/
-├── components/          # Reusable UI components
-│   ├── Modal.tsx       # Base modal component
-│   ├── ConfirmModal.tsx # Confirmation dialog (uses Modal)
-│   ├── DashboardNav.tsx # Navigation component
-│   └── ProtectedRoute.tsx # Route protection
-├── context/            # React Context providers
-│   ├── AuthContext.tsx # Authentication state
-│   └── AppContext.tsx  # Application state
-├── hooks/              # Custom React hooks
-│   ├── usePantry.ts
-│   ├── useRecipes.ts
-│   ├── useShoppingLists.ts
-│   ├── useExpenses.ts
-│   └── useMealPlans.ts
-├── pages/              # Page components
-│   ├── HomePage.tsx
-│   ├── PantryPage.tsx
-│   ├── RecipesPage.tsx
-│   ├── ShoppingListPage.tsx
-│   ├── WeeklyPlanPage.tsx
-│   ├── BudgetPage.tsx
-│   └── ProfilePage.tsx
-├── services/           # API service layer
-│   ├── apiCall.ts      # Base API utilities
-│   ├── auth.service.ts
-│   ├── pantry.service.ts
-│   ├── recipes.service.ts
-│   └── ...
-├── utils/              # Utility functions
-│   ├── dateUtils.ts    # Date formatting and calculations
-│   └── ingredientCheck.ts # Recipe ingredient availability checking
-└── types/              # TypeScript type definitions
-```
+<br>
+<!-- system design -->
+<img src="./readme/card-titles/title3.svg"/>
 
-## Key Utility Files
+### Application Architecture
 
-### `dateUtils.ts`
-Essential date manipulation utilities used throughout the application:
-- `getWeekStartDate()` - Calculates the start of the week (Monday)
-- `getDaysUntilExpiry()` - Calculates days until expiration
-- `formatDate()` - Formats dates for display
-- Used in: HomePage, PantryPage, ShoppingListPage, WeeklyPlanPage
+| Layer | Purpose |
+|------|---------|
+| **React 19** | Component-based household management interface |
+| **TypeScript** | Typed state, services, hooks, and page data |
+| **Vite** | Fast local development and production builds |
+| **React Router** | Public, protected, and admin-only routes |
+| **React Query** | Server state fetching, caching, and mutation hooks |
+| **Axios Service Layer** | Central API wrapper with auth token injection |
+| **Context Providers** | Authentication and app-level state |
 
-### `ingredientCheck.ts`
-Recipe ingredient availability checking:
-- `checkIngredientAvailability()` - Checks if pantry has enough ingredients for a recipe
-- `convertToShoppingListItems()` - Converts missing ingredients to shopping list items
-- Used in: ShoppingListPage
+<br>
 
-## Components
+### Repository Map
 
-### Modal Components
-- **Modal** - Base modal component with overlay, header, and body
-- **ConfirmModal** - Specialized confirmation dialog that wraps Modal component
-  - Used for delete confirmations and other critical actions
-  - Provides cancel/confirm button styling
+| Path | Description |
+|-----|-------------|
+| `src/App.tsx` | Route definitions for public, protected, and admin pages |
+| `src/pages` | Landing, auth, home, pantry, recipes, shopping, weekly plan, budget, profile, and admin screens |
+| `src/services` | API modules for auth, pantry, recipes, ingredients, shopping lists, meal plans, budget, admin, AI, insights, nutrition, units, and households |
+| `src/hooks` | React Query hooks for pantry, recipes, shopping lists, expenses, meal plans, admin, and query keys |
+| `src/components` | Route guards, dashboard navigation, modals, alerts, and confirmations |
+| `src/context` | Auth and application context providers |
+| `src/utils` | Date helpers and ingredient availability utilities |
+| `src/types` | Shared TypeScript types |
+| `src/styles` | Shared style files |
 
-## Getting Started
+<br><br>
+<!-- core features -->
+<img src="./readme/card-titles/title4.svg"/>
+
+### Core Features
+
+- **Authentication**: Login, registration, auth context, protected routes, and bearer token API calls.<br>
+- **Pantry management**: Track household items, quantities, locations, and expiration dates.<br>
+- **Recipe management**: Create and manage recipes, ingredients, and nutrition-related data.<br>
+- **Shopping lists**: Build shopping lists manually or from missing recipe ingredients.<br>
+- **Weekly meal planning**: Schedule meals across a weekly plan view.<br>
+- **Budget tracking**: Track expenses by store/category and monitor household spending.<br>
+- **Profile page**: Manage user and household-facing account data.<br>
+- **Admin page**: Admin-only route and admin service/hook support.<br>
+- **AI and insights services**: Dedicated service modules for AI assistance and household insights.<br>
+- **Reusable UI primitives**: Modal, confirm modal, alert modal, dashboard nav, protected route, and admin route components.<br>
+
+<br>
+
+### Main Routes
+
+| Route | Screen |
+|------|--------|
+| `/` | Landing page |
+| `/login` | Login |
+| `/register` | Register |
+| `/home` | Protected home dashboard |
+| `/pantry` | Protected pantry |
+| `/shopping` | Protected shopping lists |
+| `/weekly-plan` | Protected weekly meal plan |
+| `/profile` | Protected profile |
+| `/recipes` | Protected recipes |
+| `/budget` | Protected budget |
+| `/admin` | Admin-only dashboard |
+
+<br>
+<!-- local setup -->
+<img src="./readme/card-titles/title5.svg"/>
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn
 
-### Installation
+| Tool | Version |
+|------|---------|
+| Node.js | 18+ |
+| npm | Current stable |
+| Backend | HomeLife Laravel API running locally |
+
+<br>
+
+### Install and Run
 
 ```bash
 npm install
-```
-
-### Development
-
-```bash
 npm run dev
 ```
 
-### Build
+Default dev URL:
+
+```text
+http://localhost:5173
+```
+
+<br>
+
+### Backend API URL
+
+The frontend reads the API URL from `VITE_API_URL` and falls back to:
+
+```text
+http://127.0.0.1:8000/api/v0.1
+```
+
+Create a local `.env` when needed:
+
+```bash
+VITE_API_URL=http://127.0.0.1:8000/api/v0.1
+```
+
+<br>
+
+### Build Commands
 
 ```bash
 npm run build
-```
-
-### Preview Production Build
-
-```bash
+npm run lint
 npm run preview
 ```
 
-## Environment Setup
+<br><br>
+<!-- frontend map -->
+<img src="./readme/card-titles/title6.svg"/>
 
-See `API_CONFIGURATION_GUIDE.md` for backend API configuration and environment variables.
+### Service Areas
 
-## Features
+| Service | Purpose |
+|--------|---------|
+| `auth.service.ts` | Authentication requests |
+| `pantry.service.ts` | Pantry inventory API calls |
+| `recipes.service.ts` | Recipe API calls |
+| `ingredients.service.ts` | Ingredient data |
+| `shoppingList.service.ts` | Shopping list workflows |
+| `mealPlan.service.ts` | Weekly plan workflows |
+| `budget.service.ts` | Expenses and budget tracking |
+| `household.service.ts` | Household data |
+| `admin.service.ts` | Admin operations |
+| `ai.service.ts` | AI-assisted features |
+| `insights.service.ts` | Household insights |
+| `nutrition.service.ts` | Nutrition support |
+| `units.service.ts` | Unit/reference support |
 
-- 🏠 **Pantry Management** - Track ingredients with expiry dates and locations
-- 📝 **Recipe Management** - Create and manage recipes with nutritional information
-- 🛒 **Shopping Lists** - Generate shopping lists from recipes
-- 📅 **Meal Planning** - Weekly meal planning and scheduling
-- 💰 **Budget Tracking** - Track expenses by category and store
-- 🔐 **Authentication** - User authentication and household management
+<br>
 
-## API Integration
+### Key Dependencies
 
-The application integrates with a Laravel backend API. See the following guides:
-- `API_CONFIGURATION_GUIDE.md` - API setup and configuration
-- `API_INTEGRATION_GUIDE.md` - Integration details
-- `BACKEND_INTEGRATION.md` - Backend connection setup
+| Package | Purpose |
+|---------|---------|
+| `react` / `react-dom` | UI runtime |
+| `react-router-dom` | Routing |
+| `@tanstack/react-query` | Server state |
+| `axios` | HTTP requests |
+| `lucide-react` | Icons |
+| `vite` | Dev server and build tool |
+| `typescript` | Static typing |
+| `eslint` | Code linting |
 
-## Code Quality
+<br><br>
+<!-- growth path -->
+<img src="./readme/card-titles/title7.svg"/>
 
-- ESLint for code linting
-- TypeScript for type safety
-- React Query for efficient data fetching
+### Future Expansion
 
-## Expanding the ESLint configuration
+| Area | Direction |
+|-----|-----------|
+| Offline support | Cache pantry and shopping list flows for grocery trips |
+| UX polish | Add denser empty states, loading states, and mobile-first list actions |
+| Insights | Surface expiration risk, spending trends, and ingredient usage patterns |
+| AI planning | Generate meal plans from pantry availability and budget constraints |
+| Testing | Add route, hook, and service tests |
+| Accessibility | Audit modals, forms, keyboard flow, and contrast |
+| Deployment | Add production environment and API deployment notes |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+<br>
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-    },
-  },
-])
-```
+---
+
+**Client-Side HomeLife** - React and TypeScript household management frontend for pantry, recipes, shopping lists, meal planning, budgets, admin tools, and API-driven insights.
+
+*A practical home operating system for food, planning, and spending.*
